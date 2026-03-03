@@ -186,7 +186,7 @@ class TestCachedDecorator:
     def test_custom_key_func(self) -> None:
         cache = TTLCache(default_ttl=60)
 
-        @cached(cache, key_func=lambda: "my_key")
+        @cached(cache, key_func=lambda *_: "my_key")
         def compute() -> str:
             return "hello"
 
@@ -223,7 +223,7 @@ class TestCachedDecorator:
     async def test_async_custom_key_func(self) -> None:
         cache = TTLCache(default_ttl=60)
 
-        @cached(cache, key_func=lambda: "async_key")
+        @cached(cache, key_func=lambda *_: "async_key")
         async def compute() -> int:
             return 7
 
@@ -234,7 +234,7 @@ class TestCachedDecorator:
         cache = TTLCache(default_ttl=60)
         call_count = 0
 
-        @cached(cache, key_func=lambda: "recomp")
+        @cached(cache, key_func=lambda *_: "recomp")
         def compute() -> int:
             nonlocal call_count
             call_count += 1
@@ -243,4 +243,42 @@ class TestCachedDecorator:
         assert compute() == 1
         cache.invalidate("recomp")
         assert compute() == 2
+        assert call_count == 2
+
+    def test_parameterised_key_func_isolates_per_arg(self) -> None:
+        """key_func receives (*args, **kwargs) — different args produce different keys."""
+        cache = TTLCache(default_ttl=60)
+        call_count = 0
+
+        @cached(cache, key_func=lambda label, **__: f"samples:{label}")
+        def get_samples(label: str) -> str:
+            nonlocal call_count
+            call_count += 1
+            return f"data-for-{label}"
+
+        assert get_samples("Person") == "data-for-Person"
+        assert get_samples("Company") == "data-for-Company"
+        assert call_count == 2  # two distinct keys, no cross-contamination
+
+        # Second call for each label hits the cache
+        assert get_samples("Person") == "data-for-Person"
+        assert get_samples("Company") == "data-for-Company"
+        assert call_count == 2
+
+    async def test_async_parameterised_key_func(self) -> None:
+        """Async variant of parameterised key_func."""
+        cache = TTLCache(default_ttl=60)
+        call_count = 0
+
+        @cached(cache, key_func=lambda node_id, **__: f"expand:{node_id}")
+        async def expand(node_id: str) -> str:
+            nonlocal call_count
+            call_count += 1
+            return f"result-{node_id}"
+
+        assert await expand("abc") == "result-abc"
+        assert await expand("xyz") == "result-xyz"
+        assert call_count == 2
+
+        assert await expand("abc") == "result-abc"
         assert call_count == 2

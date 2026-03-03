@@ -13,6 +13,7 @@ from app.core.logging import (
     clear_request_context,
     configure_logging,
     get_logger,
+    unbind_request_context,
 )
 
 
@@ -84,6 +85,50 @@ class TestConfigureLogging:
         cfg = structlog.get_config()
         processors = cfg["processors"]
         assert structlog.stdlib.add_log_level in processors
+
+    def test_json_path_includes_format_exc_info(self) -> None:
+        """JSON path must convert exc_info tuples before JSONRenderer runs."""
+        _reconfigure("INFO")
+        cfg = structlog.get_config()
+        processors = cfg["processors"]
+        assert structlog.processors.format_exc_info in processors
+
+    def test_debug_path_excludes_format_exc_info(self) -> None:
+        """DEBUG path omits format_exc_info so ConsoleRenderer keeps native coloring."""
+        _reconfigure("DEBUG")
+        cfg = structlog.get_config()
+        processors = cfg["processors"]
+        assert structlog.processors.format_exc_info not in processors
+
+    def test_json_exc_info_is_serializable(self) -> None:
+        """logger.error(..., exc_info=True) must produce valid JSON — not raise TypeError."""
+        buf = io.StringIO()
+        structlog.reset_defaults()
+        structlog.configure(
+            processors=[
+                structlog.contextvars.merge_contextvars,
+                structlog.stdlib.add_log_level,
+                structlog.processors.TimeStamper(fmt="iso", utc=True),
+                structlog.processors.StackInfoRenderer(),
+                structlog.processors.UnicodeDecoder(),
+                structlog.processors.format_exc_info,
+                structlog.processors.JSONRenderer(),
+            ],
+            wrapper_class=structlog.make_filtering_bound_logger(0),
+            context_class=dict,
+            logger_factory=structlog.PrintLoggerFactory(file=buf),
+            cache_logger_on_first_use=False,
+        )
+        logger = structlog.get_logger("exc_test")
+        try:
+            raise ValueError("copilot pipeline timeout")
+        except ValueError:
+            logger.error("pipeline failed", exc_info=True)
+
+        data = json.loads(buf.getvalue().strip())
+        assert "exception" in data
+        assert "ValueError" in data["exception"]
+        assert "copilot pipeline timeout" in data["exception"]
 
 
 class TestGetLogger:
@@ -174,3 +219,56 @@ class TestRequestContext:
         output = buf.getvalue().strip()
         data = json.loads(output)
         assert "request_id" not in data
+
+    def test_unbind_removes_specific_key(self) -> None:
+        """unbind_request_context removes the named key from the context."""
+        clear_request_context()
+        bind_request_context(request_id="req-1", pipeline_stage="router")
+
+        buf = io.StringIO()
+        structlog.reset_defaults()
+        structlog.configure(
+            processors=[
+                structlog.contextvars.merge_contextvars,
+                structlog.processors.JSONRenderer(),
+            ],
+            wrapper_class=structlog.make_filtering_bound_logger(0),
+            context_class=dict,
+            logger_factory=structlog.PrintLoggerFactory(file=buf),
+            cache_logger_on_first_use=False,
+        )
+
+        unbind_request_context("pipeline_stage")
+        structlog.get_logger("unbind_test").info("after unbind")
+
+        data = json.loads(buf.getvalue().strip())
+        assert "pipeline_stage" not in data
+
+    def test_unbind_preserves_other_keys(self) -> None:
+        """unbind_request_context does not wipe the rest of the context."""
+        clear_request_context()
+        bind_request_context(request_id="req-2", pipeline_stage="synthesiser", model="opus")
+
+        buf = io.StringIO()
+        structlog.reset_defaults()
+        structlog.configure(
+            processors=[
+                structlog.contextvars.merge_contextvars,
+                structlog.processors.JSONRenderer(),
+            ],
+            wrapper_class=structlog.make_filtering_bound_logger(0),
+            context_class=dict,
+            logger_factory=structlog.PrintLoggerFactory(file=buf),
+            cache_logger_on_first_use=False,
+        )
+
+        # Simulate end-of-stage cleanup: drop stage keys, keep request context.
+        unbind_request_context("pipeline_stage", "model")
+        structlog.get_logger("preserve_test").info("next stage")
+
+        data = json.loads(buf.getvalue().strip())
+        assert data["request_id"] == "req-2"
+        assert "pipeline_stage" not in data
+        assert "model" not in data
+
+        clear_request_context()

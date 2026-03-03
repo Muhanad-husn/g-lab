@@ -12,8 +12,16 @@ Usage::
 
     schema_cache = TTLCache(default_ttl=300)
 
-    @cached(schema_cache, key_func=lambda: "schema")
+    # key_func receives the same (*args, **kwargs) as the wrapped function.
+    # Use ``lambda *_: "schema"`` for a static key; use args for parameterised keys.
+
+    @cached(schema_cache, key_func=lambda *_: "schema")
     async def get_schema() -> dict: ...
+
+    sample_cache = TTLCache(default_ttl=300)
+
+    @cached(sample_cache, key_func=lambda label, **__: f"samples:{label}")
+    async def get_samples(label: str) -> list: ...
 """
 
 from __future__ import annotations
@@ -109,8 +117,11 @@ def cached(
     cache:
         The :class:`TTLCache` instance to use.
     key_func:
-        A callable returning the cache key string.
-        Defaults to ``func.__qualname__``.
+        A callable that receives the same ``(*args, **kwargs)`` as the wrapped
+        function and returns a cache key string.  Use ``lambda *_: "key"`` for
+        a static key; use the arguments for parameterised keys, e.g.
+        ``lambda label, **__: f"samples:{label}"``.
+        Defaults to ``func.__qualname__`` (identical key for every call).
     ttl:
         Per-entry TTL override (seconds). ``None`` → cache default.
     """
@@ -120,7 +131,7 @@ def cached(
 
             @functools.wraps(func)
             async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
-                key = key_func() if key_func else func.__qualname__
+                key = key_func(*args, **kwargs) if key_func else func.__qualname__
                 hit = cache.get(key)
                 if hit is not None:
                     return hit
@@ -132,7 +143,7 @@ def cached(
 
         @functools.wraps(func)
         def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
-            key = key_func() if key_func else func.__qualname__
+            key = key_func(*args, **kwargs) if key_func else func.__qualname__
             hit = cache.get(key)
             if hit is not None:
                 return hit
