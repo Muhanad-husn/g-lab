@@ -20,6 +20,8 @@ Implement the next pending run for the current stage.
    - `CLAUDE.md`, `backend/CLAUDE.md`, and/or `frontend/CLAUDE.md`
    - `docs/ARCHITECTURE.md` §14 for type contracts
    - Check the run's file list in IMPLEMENTATION_PLAN.md
+   - If the run touches backend services, routers, or middleware, review `/core-utils`
+     for correct import paths and usage patterns.
 
 5. **Fetch library docs:**
    - Use Context7 MCP to fetch docs for any libraries used in this run (≤5K tokens total).
@@ -41,3 +43,5 @@ Implement the next pending run for the current stage.
    - Files created/modified.
    - Test results.
    - Next run hint (or "stage complete" if last run).
+   - If this run introduced new gotchas, patterns, or core utilities, remind:
+     "Run `/update-docs` to sync project memory."

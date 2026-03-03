@@ -18,11 +18,9 @@ Close the current stage after all runs are complete.
    - Report results. If failures, stop and let the user decide.
 
 4. **Update memory:**
-   - Update `MEMORY.md` (auto-memory) with:
-     - Key decisions made during this stage
-     - Patterns established
-     - Gotchas encountered
-     - Important file paths added
+   - Run `/update-docs` to sync all project memory and documentation.
+   - This covers MEMORY.md, core-utils.md, and any CLAUDE.md updates.
+   - See `.claude/commands/update-docs.md` for the full update protocol.
 
 5. **Commit any final changes** (if memory or minor fixes were added).
 

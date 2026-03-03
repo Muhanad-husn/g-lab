@@ -38,6 +38,8 @@
 - **Dual-sink:** Every action logs to both NDJSON file (append-only, per-session) and SQLite `action_log` table.
 - **Async fire-and-forget:** Use FastAPI `BackgroundTasks`. Never block the request on logging.
 - **NDJSON is the source of truth** for exports. If SQLite write fails, NDJSON still has the record.
+- **Core utility reference:** run `/core-utils` for import paths, signatures, and usage
+  patterns for `get_logger`, `OperationTimer`, `WarningCollector`, and `@cached`.
 
 ## Export/Import
 

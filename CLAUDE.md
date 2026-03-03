@@ -49,6 +49,8 @@ docker compose -f docker-compose.test.yml up         # E2E tests (Playwright)
 - `/phase_1 <N>` — Implement an entire stage at once (all runs). Prefer `/stage-start` + `/next-run` for run-by-run control.
 - `/test` — Detects recently modified code (backend/frontend), runs appropriate linting and tests.
 - `/check-contracts` — Compares Pydantic schemas in `backend/app/models/schemas.py` against TypeScript types in `frontend/src/lib/types.ts`, flags mismatches against `docs/ARCHITECTURE.md` section 14.
+- `/core-utils [module]` — Quick-reference for `app/core/` utilities (logging, cache, monitoring). Optional arg filters to one module.
+- `/update-docs` — Sync project memory and documentation after meaningful work. Enforces no-duplication, MEMORY.md line budget, topic-file offloading, and core-utils freshness.
 
 ## Commit Convention
 
@@ -62,7 +64,7 @@ git log --oneline --grep='ph1-stage-N.'      # runs for stage N
 
 ## Memory Files
 
-Auto-memory is stored at `C:\Users\mou97\.claude\projects\D--g-lab\memory\MEMORY.md` and loaded into every session. Contains stage completion history (decisions, patterns, gotchas). Updated by `/stage-end`. Do not duplicate root CLAUDE.md content there.
+Auto-memory is stored at `C:\Users\mou97\.claude\projects\D--g-lab\memory\MEMORY.md` and loaded into every session. Contains stage completion history (decisions, patterns, gotchas). Updated by `/stage-end` and `/update-docs`. Do not duplicate root CLAUDE.md content there. Run `/update-docs` after any session that produces new patterns, gotchas, or conventions.
 
 ## Auto-formatting Hooks
 
