@@ -1,0 +1,282 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 1320" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace" font-size="13">
+  <defs>
+    <style>
+      .bg { fill: #0d1117; }
+      .title { fill: #e6edf3; font-size: 18px; font-weight: 700; font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; }
+      .subtitle { fill: #7d8590; font-size: 12px; font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; }
+      .folder { fill: #79c0ff; }
+      .file { fill: #e6edf3; }
+      .file-new { fill: #3fb950; }
+      .file-modified { fill: #d29922; }
+      .file-deleted { fill: #f85149; text-decoration: line-through; }
+      .file-unchanged { fill: #7d8590; }
+      .comment { fill: #7d8590; font-style: italic; font-size: 12px; }
+      .line { stroke: #30363d; stroke-width: 1; }
+      .badge-new { fill: #238636; rx: 3; }
+      .badge-mod { fill: #9e6a03; rx: 3; }
+      .badge-del { fill: #da3633; rx: 3; }
+      .badge-text { fill: #ffffff; font-size: 10px; font-weight: 600; font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; }
+      .legend-box { fill: #161b22; stroke: #30363d; stroke-width: 1; rx: 6; }
+      .section-line { stroke: #21262d; stroke-width: 1; stroke-dasharray: 4,4; }
+      .section-label { fill: #484f58; font-size: 11px; font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+      .tree-line { stroke: #30363d; stroke-width: 1; fill: none; }
+      .icon { font-size: 14px; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect class="bg" width="920" height="1320" rx="8"/>
+
+  <!-- Title -->
+  <text class="title" x="40" y="40">G-Lab Repository Structure</text>
+  <text class="subtitle" x="40" y="60">After documentation refactoring — Phase 1</text>
+
+  <!-- Legend -->
+  <rect class="legend-box" x="520" y="18" width="375" height="52"/>
+  <rect class="badge-new" x="532" y="28" width="40" height="16"/>
+  <text class="badge-text" x="541" y="39">NEW</text>
+  <text class="file" x="580" y="40" font-size="11">Created</text>
+
+  <rect class="badge-mod" x="640" y="28" width="62" height="16"/>
+  <text class="badge-text" x="647" y="39">MODIFIED</text>
+  <text class="file" x="710" y="40" font-size="11">Changed</text>
+
+  <rect class="badge-del" x="770" y="28" width="56" height="16"/>
+  <text class="badge-text" x="778" y="39">DELETED</text>
+  <text class="file" x="834" y="40" font-size="11">Removed</text>
+
+  <text class="file-unchanged" x="532" y="58" font-size="11">Grey = Unchanged</text>
+
+  <!-- Root level -->
+  <text class="folder" x="40" y="100">📁 g-lab/</text>
+
+  <!-- Tree lines helper: vertical trunk -->
+  <line class="tree-line" x1="56" y1="108" x2="56" y2="1290"/>
+
+  <!-- === Root files === -->
+  <text class="section-label" x="80" y="128">Root files</text>
+  <line class="section-line" x1="160" y1="124" x2="500" y2="124"/>
+
+  <!-- docker-compose.yml -->
+  <line class="tree-line" x1="56" y1="148" x2="72" y2="148"/>
+  <text class="file-unchanged" x="76" y="148">docker-compose.yml</text>
+
+  <!-- docker-compose.test.yml -->
+  <line class="tree-line" x1="56" y1="170" x2="72" y2="170"/>
+  <text class="file-unchanged" x="76" y="170">docker-compose.test.yml</text>
+
+  <!-- .env.example -->
+  <line class="tree-line" x1="56" y1="192" x2="72" y2="192"/>
+  <text class="file-unchanged" x="76" y="192">.env.example</text>
+
+  <!-- .gitignore -->
+  <line class="tree-line" x1="56" y1="214" x2="72" y2="214"/>
+  <text class="file-unchanged" x="76" y="214">.gitignore</text>
+
+  <!-- README.md -->
+  <line class="tree-line" x1="56" y1="236" x2="72" y2="236"/>
+  <text class="file-unchanged" x="76" y="236">README.md</text>
+
+  <!-- PRODUCT.md -->
+  <line class="tree-line" x1="56" y1="258" x2="72" y2="258"/>
+  <text class="file-unchanged" x="76" y="258">PRODUCT.md</text>
+  <text class="comment" x="350" y="258">What &amp; why — unchanged</text>
+
+  <!-- ARCHITECTURE.md -->
+  <line class="tree-line" x1="56" y1="280" x2="72" y2="280"/>
+  <text class="file-modified" x="76" y="280">ARCHITECTURE.md</text>
+  <rect class="badge-mod" x="250" y="268" width="62" height="16"/>
+  <text class="badge-text" x="257" y="279">MODIFIED</text>
+  <text class="comment" x="320" y="280">+§14 Canonical Type Contracts</text>
+
+  <!-- STRUCTURE_PH1.md -->
+  <line class="tree-line" x1="56" y1="302" x2="72" y2="302"/>
+  <text class="file-modified" x="76" y="302">STRUCTURE_PH1.md</text>
+  <rect class="badge-mod" x="250" y="290" width="62" height="16"/>
+  <text class="badge-text" x="257" y="301">MODIFIED</text>
+  <text class="comment" x="320" y="302">Slimmed: 453→203 lines</text>
+
+  <!-- CLAUDE.md -->
+  <line class="tree-line" x1="56" y1="324" x2="72" y2="324"/>
+  <text class="file-new" x="76" y="324">CLAUDE.md</text>
+  <rect class="badge-new" x="195" y="312" width="40" height="16"/>
+  <text class="badge-text" x="204" y="323">NEW</text>
+  <text class="comment" x="243" y="324">Project brief for Claude Code (~90 lines)</text>
+
+  <!-- DEPENDENCIES-AND-INTEGRATIONS.md -->
+  <line class="tree-line" x1="56" y1="346" x2="72" y2="346"/>
+  <text class="file-deleted" x="76" y="346">DEPENDENCIES-AND-INTEGRATIONS.md</text>
+  <rect class="badge-del" x="410" y="334" width="56" height="16"/>
+  <text class="badge-text" x="418" y="345">DELETED</text>
+  <text class="comment" x="474" y="346">Content distributed</text>
+
+  <!-- REFACTORING-PLAN.md -->
+  <line class="tree-line" x1="56" y1="368" x2="72" y2="368"/>
+  <text class="file-unchanged" x="76" y="368">REFACTORING-PLAN.md</text>
+  <text class="comment" x="350" y="368">Reference only</text>
+
+  <!-- === .claude/ === -->
+  <text class="section-label" x="80" y="404">Claude Code config</text>
+  <line class="section-line" x1="210" y1="400" x2="500" y2="400"/>
+
+  <line class="tree-line" x1="56" y1="424" x2="72" y2="424"/>
+  <text class="folder" x="76" y="424">📁 .claude/</text>
+  <rect class="badge-new" x="170" y="412" width="40" height="16"/>
+  <text class="badge-text" x="179" y="423">NEW</text>
+
+  <!-- vertical trunk for .claude -->
+  <line class="tree-line" x1="92" y1="432" x2="92" y2="510"/>
+
+  <line class="tree-line" x1="92" y1="446" x2="108" y2="446"/>
+  <text class="file-new" x="112" y="446">settings.json</text>
+  <text class="comment" x="320" y="446">Auto-format hooks, destructive op blocker</text>
+
+  <line class="tree-line" x1="92" y1="468" x2="108" y2="468"/>
+  <text class="folder" x="112" y="468">📁 commands/</text>
+
+  <line class="tree-line" x1="128" y1="476" x2="128" y2="532"/>
+
+  <line class="tree-line" x1="128" y1="490" x2="144" y2="490"/>
+  <text class="file-new" x="148" y="490">stage.md</text>
+  <text class="comment" x="320" y="490">/stage slash command</text>
+
+  <line class="tree-line" x1="128" y1="512" x2="144" y2="512"/>
+  <text class="file-new" x="148" y="512">test.md</text>
+  <text class="comment" x="320" y="512">/test slash command</text>
+
+  <line class="tree-line" x1="128" y1="534" x2="144" y2="534"/>
+  <text class="file-new" x="148" y="534">check-contracts.md</text>
+  <text class="comment" x="320" y="534">/check-contracts slash command</text>
+
+  <!-- === backend/ === -->
+  <text class="section-label" x="80" y="570">Backend (Python / FastAPI)</text>
+  <line class="section-line" x1="270" y1="566" x2="500" y2="566"/>
+
+  <line class="tree-line" x1="56" y1="590" x2="72" y2="590"/>
+  <text class="folder" x="76" y="590">📁 backend/</text>
+
+  <line class="tree-line" x1="92" y1="598" x2="92" y2="840"/>
+
+  <line class="tree-line" x1="92" y1="612" x2="108" y2="612"/>
+  <text class="file-new" x="112" y="612">CLAUDE.md</text>
+  <rect class="badge-new" x="210" y="600" width="40" height="16"/>
+  <text class="badge-text" x="219" y="611">NEW</text>
+  <text class="comment" x="258" y="612">Backend conventions &amp; gotchas (~63 lines)</text>
+
+  <line class="tree-line" x1="92" y1="634" x2="108" y2="634"/>
+  <text class="file-unchanged" x="112" y="634">Dockerfile</text>
+
+  <line class="tree-line" x1="92" y1="656" x2="108" y2="656"/>
+  <text class="file-unchanged" x="112" y="656">pyproject.toml</text>
+
+  <line class="tree-line" x1="92" y1="678" x2="108" y2="678"/>
+  <text class="file-unchanged" x="112" y="678">alembic.ini</text>
+
+  <line class="tree-line" x1="92" y1="700" x2="108" y2="700"/>
+  <text class="folder" x="112" y="700">📁 app/</text>
+
+  <line class="tree-line" x1="128" y1="708" x2="128" y2="838"/>
+
+  <line class="tree-line" x1="128" y1="722" x2="144" y2="722"/>
+  <text class="file-unchanged" x="148" y="722">main.py</text>
+  <text class="comment" x="320" y="722">FastAPI app, lifespan, CORS</text>
+
+  <line class="tree-line" x1="128" y1="744" x2="144" y2="744"/>
+  <text class="file-unchanged" x="148" y="744">config.py</text>
+  <text class="comment" x="320" y="744">Pydantic Settings</text>
+
+  <line class="tree-line" x1="128" y1="766" x2="144" y2="766"/>
+  <text class="folder" x="148" y="766">📁 routers/</text>
+  <text class="comment" x="320" y="766">graph, sessions, findings</text>
+
+  <line class="tree-line" x1="128" y1="788" x2="144" y2="788"/>
+  <text class="folder" x="148" y="788">📁 services/</text>
+  <text class="comment" x="320" y="788">neo4j, session, finding, guardrails, action_log</text>
+
+  <line class="tree-line" x1="128" y1="810" x2="144" y2="810"/>
+  <text class="folder" x="148" y="810">📁 models/</text>
+  <text class="comment" x="320" y="810">db.py, schemas.py, enums.py</text>
+
+  <line class="tree-line" x1="128" y1="832" x2="144" y2="832"/>
+  <text class="folder" x="148" y="832">📁 utils/</text>
+  <text class="comment" x="320" y="832">cypher, export, response</text>
+
+  <line class="tree-line" x1="92" y1="854" x2="108" y2="854"/>
+  <text class="folder" x="112" y="854">📁 tests/</text>
+  <text class="comment" x="320" y="854">unit/, integration/, api/, fixtures/</text>
+
+  <!-- === frontend/ === -->
+  <text class="section-label" x="80" y="894">Frontend (React / TypeScript)</text>
+  <line class="section-line" x1="280" y1="890" x2="500" y2="890"/>
+
+  <line class="tree-line" x1="56" y1="914" x2="72" y2="914"/>
+  <text class="folder" x="76" y="914">📁 frontend/</text>
+
+  <line class="tree-line" x1="92" y1="922" x2="92" y2="1180"/>
+
+  <line class="tree-line" x1="92" y1="936" x2="108" y2="936"/>
+  <text class="file-new" x="112" y="936">CLAUDE.md</text>
+  <rect class="badge-new" x="210" y="924" width="40" height="16"/>
+  <text class="badge-text" x="219" y="935">NEW</text>
+  <text class="comment" x="258" y="936">Frontend conventions, Cytoscape rules (~95 lines)</text>
+
+  <line class="tree-line" x1="92" y1="958" x2="108" y2="958"/>
+  <text class="file-unchanged" x="112" y="958">Dockerfile</text>
+
+  <line class="tree-line" x1="92" y1="980" x2="108" y2="980"/>
+  <text class="file-unchanged" x="112" y="980">package.json</text>
+
+  <line class="tree-line" x1="92" y1="1002" x2="108" y2="1002"/>
+  <text class="folder" x="112" y="1002">📁 src/</text>
+
+  <line class="tree-line" x1="128" y1="1010" x2="128" y2="1172"/>
+
+  <line class="tree-line" x1="128" y1="1024" x2="144" y2="1024"/>
+  <text class="file-unchanged" x="148" y="1024">main.tsx</text>
+  <text class="comment" x="320" y="1024">React entry</text>
+
+  <line class="tree-line" x1="128" y1="1046" x2="144" y2="1046"/>
+  <text class="file-unchanged" x="148" y="1046">App.tsx</text>
+  <text class="comment" x="320" y="1046">Root layout, session restore</text>
+
+  <line class="tree-line" x1="128" y1="1068" x2="144" y2="1068"/>
+  <text class="folder" x="148" y="1068">📁 api/</text>
+  <text class="comment" x="320" y="1068">client, graph, sessions, findings</text>
+
+  <line class="tree-line" x1="128" y1="1090" x2="144" y2="1090"/>
+  <text class="folder" x="148" y="1090">📁 store/</text>
+  <text class="comment" x="320" y="1090">graphSlice, sessionSlice, uiSlice, configSlice</text>
+
+  <line class="tree-line" x1="128" y1="1112" x2="144" y2="1112"/>
+  <text class="folder" x="148" y="1112">📁 components/</text>
+  <text class="comment" x="320" y="1112">layout, navigator, canvas, inspector, shared</text>
+
+  <line class="tree-line" x1="128" y1="1134" x2="144" y2="1134"/>
+  <text class="folder" x="148" y="1134">📁 hooks/</text>
+  <text class="comment" x="320" y="1134">useSessionRestore, useGraphActions</text>
+
+  <line class="tree-line" x1="128" y1="1156" x2="144" y2="1156"/>
+  <text class="folder" x="148" y="1156">📁 lib/</text>
+  <text class="comment" x="320" y="1156">cytoscape, constants, types</text>
+
+  <line class="tree-line" x1="92" y1="1178" x2="108" y2="1178"/>
+  <text class="folder" x="112" y="1178">📁 tests/</text>
+  <text class="comment" x="320" y="1178">store/, components/</text>
+
+  <!-- === e2e/ === -->
+  <text class="section-label" x="80" y="1218">End-to-end tests</text>
+  <line class="section-line" x1="210" y1="1214" x2="500" y2="1214"/>
+
+  <line class="tree-line" x1="56" y1="1238" x2="72" y2="1238"/>
+  <text class="folder" x="76" y="1238">📁 e2e/</text>
+
+  <line class="tree-line" x1="92" y1="1246" x2="92" y2="1290"/>
+
+  <line class="tree-line" x1="92" y1="1260" x2="108" y2="1260"/>
+  <text class="file-unchanged" x="112" y="1260">playwright.config.ts</text>
+
+  <line class="tree-line" x1="92" y1="1282" x2="108" y2="1282"/>
+  <text class="folder" x="112" y="1282">📁 tests/</text>
+  <text class="comment" x="320" y="1282">investigation-flow, session-lifecycle</text>
+
+</svg>
