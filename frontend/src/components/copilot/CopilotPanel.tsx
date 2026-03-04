@@ -89,25 +89,16 @@ export function CopilotPanel() {
   const isStreaming = useStore((s) => s.isStreaming);
   const pipelineStatus = useStore((s) => s.pipelineStatus);
 
-  const {
-    startStream,
-    appendTextChunk,
-    setEvidence,
-    setPendingDelta,
-    setConfidence,
-    setStatus,
-    finishStream,
-    addMessage,
-  } = useStore((s) => ({
-    startStream: s.startStream,
-    appendTextChunk: s.appendTextChunk,
-    setEvidence: s.setEvidence,
-    setPendingDelta: s.setPendingDelta,
-    setConfidence: s.setConfidence,
-    setStatus: s.setStatus,
-    finishStream: s.finishStream,
-    addMessage: s.addMessage,
-  }));
+  // Actions are stable references in Zustand — use individual selectors to avoid
+  // creating a new object every render (which would cause an infinite re-render loop).
+  const startStream = useStore((s) => s.startStream);
+  const appendTextChunk = useStore((s) => s.appendTextChunk);
+  const setEvidence = useStore((s) => s.setEvidence);
+  const setPendingDelta = useStore((s) => s.setPendingDelta);
+  const setConfidence = useStore((s) => s.setConfidence);
+  const setStatus = useStore((s) => s.setStatus);
+  const finishStream = useStore((s) => s.finishStream);
+  const addMessage = useStore((s) => s.addMessage);
 
   // Auto-scroll to bottom when messages or streaming content change
   useEffect(() => {
