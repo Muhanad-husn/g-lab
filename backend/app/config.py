@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     NEO4J_USER: str = "neo4j"
     NEO4J_PASSWORD: str = "password"
 
+    # OpenRouter (Phase 2 — Copilot)
+    OPENROUTER_API_KEY: str = ""
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+
     # Application
     GLAB_DATA_DIR: Path = Path("/data")
     GLAB_LOG_LEVEL: str = "INFO"
