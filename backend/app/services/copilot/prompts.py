@@ -46,7 +46,7 @@ Constraints (HARD):
 - Only use: MATCH, OPTIONAL MATCH, WHERE, WITH, RETURN, ORDER BY, LIMIT,
   UNWIND, shortestPath, allShortestPaths, CALL db.*
 - No WRITE clauses (CREATE, MERGE, SET, DELETE, REMOVE).
-- No semicolons; no CALL {} (sub-query form).
+- No semicolons; no CALL {{}} (sub-query form).
 - LIMIT the result to at most 50 rows.
 - Return only the Cypher query — no explanation, no markdown.
 
