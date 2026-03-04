@@ -70,9 +70,7 @@ _FORBIDDEN_KEYWORDS: set[str] = {
 }
 
 # Matches standalone CALL { ... } (subquery syntax) — NOT "CALL db.labels()".
-_CALL_SUBQUERY_RE = re.compile(
-    r"\bCALL\s*\{", re.IGNORECASE
-)
+_CALL_SUBQUERY_RE = re.compile(r"\bCALL\s*\{", re.IGNORECASE)
 
 # Single-line (//) and multi-line (/* */) comments.
 _LINE_COMMENT_RE = re.compile(r"//.*$", re.MULTILINE)
@@ -82,9 +80,7 @@ _BLOCK_COMMENT_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
 _SEMICOLON_RE = re.compile(r";")
 
 # Detects "CALL <procedure>" (allowed) vs bare CALL.
-_CALL_PROCEDURE_RE = re.compile(
-    r"\bCALL\s+([\w.]+)", re.IGNORECASE
-)
+_CALL_PROCEDURE_RE = re.compile(r"\bCALL\s+([\w.]+)", re.IGNORECASE)
 
 # Matches forbidden keywords as whole words.
 _FORBIDDEN_RE = re.compile(
@@ -111,9 +107,7 @@ class CypherSanitiser:
             CypherValidationError: If the query contains forbidden clauses.
         """
         if not query or not query.strip():
-            raise CypherValidationError(
-                "Empty query", query=query
-            )
+            raise CypherValidationError("Empty query", query=query)
 
         cleaned = self._strip_comments(query)
 
@@ -144,9 +138,7 @@ class CypherSanitiser:
             )
 
     @staticmethod
-    def _reject_call_subqueries(
-        cleaned: str, original: str
-    ) -> None:
+    def _reject_call_subqueries(cleaned: str, original: str) -> None:
         if _CALL_SUBQUERY_RE.search(cleaned):
             raise CypherValidationError(
                 "CALL {} subqueries are not allowed",
@@ -154,9 +146,7 @@ class CypherSanitiser:
             )
 
     @staticmethod
-    def _reject_forbidden_keywords(
-        cleaned: str, original: str
-    ) -> None:
+    def _reject_forbidden_keywords(cleaned: str, original: str) -> None:
         match = _FORBIDDEN_RE.search(cleaned)
         if match:
             keyword = match.group(1).upper()
@@ -166,9 +156,7 @@ class CypherSanitiser:
             )
 
     @staticmethod
-    def _validate_call_procedures(
-        cleaned: str, original: str
-    ) -> None:
+    def _validate_call_procedures(cleaned: str, original: str) -> None:
         """Ensure CALL is only used with allowed procedure prefixes."""
         for m in _CALL_PROCEDURE_RE.finditer(cleaned):
             procedure = m.group(1)

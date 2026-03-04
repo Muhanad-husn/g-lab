@@ -87,8 +87,7 @@ class Neo4jService:
                     backoff = min(backoff * 2, _MAX_BACKOFF)
 
         raise Neo4jConnectionError(
-            f"Failed to connect after {_MAX_RETRIES} attempts: "
-            f"{last_err}"
+            f"Failed to connect after {_MAX_RETRIES} attempts: {last_err}"
         )
 
     async def close(self) -> None:
@@ -117,22 +116,15 @@ class Neo4jService:
         labels_task = self._fetch_labels()
         rel_types_task = self._fetch_rel_types()
 
-        labels, rel_types = await asyncio.gather(
-            labels_task, rel_types_task
-        )
+        labels, rel_types = await asyncio.gather(labels_task, rel_types_task)
         return {"labels": labels, "relationship_types": rel_types}
 
-    async def get_samples(
-        self, label: str, limit: int = 5
-    ) -> list[dict[str, Any]]:
+    async def get_samples(self, label: str, limit: int = 5) -> list[dict[str, Any]]:
         """Return sample nodes for a given label."""
         self._require_driver()
         assert self._driver is not None
 
-        query = (
-            f"MATCH (n:`{_escape_label(label)}`) "
-            f"RETURN n LIMIT $limit"
-        )
+        query = f"MATCH (n:`{_escape_label(label)}`) RETURN n LIMIT $limit"
         async with self._driver.session(
             default_access_mode="READ",
         ) as session:
@@ -191,9 +183,7 @@ class Neo4jService:
 
         label_filter = ""
         if labels:
-            label_filter = ":" + ":".join(
-                f"`{_escape_label(lbl)}`" for lbl in labels
-            )
+            label_filter = ":" + ":".join(f"`{_escape_label(lbl)}`" for lbl in labels)
 
         cypher = (
             f"MATCH (n{label_filter}) "
@@ -231,9 +221,7 @@ class Neo4jService:
 
         rel_filter = ""
         if rel_types:
-            types = "|".join(
-                f"`{_escape_label(t)}`" for t in rel_types
-            )
+            types = "|".join(f"`{_escape_label(t)}`" for t in rel_types)
             rel_filter = f":{types}"
 
         cypher = (
@@ -276,9 +264,7 @@ class Neo4jService:
         max_hops: int,
         mode: str = "shortest",
         timeout_ms: int = _DEFAULT_TIMEOUT_MS,
-    ) -> tuple[
-        list[list[Any]], list[dict[str, Any]], list[dict[str, Any]]
-    ]:
+    ) -> tuple[list[list[Any]], list[dict[str, Any]], list[dict[str, Any]]]:
         """Find paths between two nodes.
 
         Returns (paths, dedup_nodes, dedup_edges).
@@ -286,11 +272,7 @@ class Neo4jService:
         self._require_driver()
         assert self._driver is not None
 
-        func = (
-            "allShortestPaths"
-            if mode == "all_shortest"
-            else "shortestPath"
-        )
+        func = "allShortestPaths" if mode == "all_shortest" else "shortestPath"
 
         cypher = (
             f"MATCH (a), (b) "
@@ -392,8 +374,7 @@ class Neo4jService:
                 ) as sess:
                     count_res = await sess.execute_read(
                         _run_query,
-                        f"MATCH (n:`{_escape_label(label)}`) "
-                        f"RETURN count(n) AS cnt",
+                        f"MATCH (n:`{_escape_label(label)}`) RETURN count(n) AS cnt",
                         {},
                         _SCHEMA_TIMEOUT_MS,
                     )
@@ -478,9 +459,7 @@ class Neo4jService:
                 "property_keys": props,
             }
 
-        type_names = [
-            r["relationshipType"] for r in type_result
-        ]
+        type_names = [r["relationshipType"] for r in type_result]
         tasks = [_get_type_info(t) for t in type_names]
         types_info = await asyncio.gather(*tasks)
         return list(types_info)

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from unittest.mock import ANY, MagicMock, call
+from unittest.mock import MagicMock, call
 
 import pytest
 import structlog
