@@ -1,7 +1,9 @@
 import { useStore } from "@/store";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { NodeDetail } from "./NodeDetail";
 import { EdgeDetail } from "./EdgeDetail";
+import { EvidencePanel } from "@/components/copilot/EvidencePanel";
 
 // ─── Inspector ────────────────────────────────────────────────────────────────
 
@@ -9,11 +11,30 @@ export function Inspector() {
   const selectedIds = useStore((s) => s.selectedIds);
   const nodes = useStore((s) => s.nodes);
   const edges = useStore((s) => s.edges);
+  const evidence = useStore((s) => s.evidence);
 
   const selectedId = selectedIds[0] ?? null;
 
   const isNode = selectedId ? nodes.some((n) => n.id === selectedId) : false;
   const isEdge = selectedId ? edges.some((e) => e.id === selectedId) : false;
+  const hasEvidence = evidence.length > 0;
+
+  const propertiesContent = (
+    <ScrollArea className="flex-1">
+      {!selectedId && (
+        <div className="flex flex-col items-center justify-center h-32 text-muted-foreground text-xs gap-2">
+          <span>Select a node or relationship</span>
+        </div>
+      )}
+      {selectedId && isNode && <NodeDetail id={selectedId} />}
+      {selectedId && isEdge && <EdgeDetail id={selectedId} />}
+      {selectedId && !isNode && !isEdge && (
+        <p className="text-xs text-muted-foreground px-3 py-2">
+          Element not found in canvas
+        </p>
+      )}
+    </ScrollArea>
+  );
 
   return (
     <div className="flex flex-col h-full border-l border-border">
@@ -27,21 +48,38 @@ export function Inspector() {
         )}
       </div>
 
-      {/* Content */}
-      <ScrollArea className="flex-1">
-        {!selectedId && (
-          <div className="flex flex-col items-center justify-center h-32 text-muted-foreground text-xs gap-2">
-            <span>Select a node or relationship</span>
-          </div>
-        )}
-        {selectedId && isNode && <NodeDetail id={selectedId} />}
-        {selectedId && isEdge && <EdgeDetail id={selectedId} />}
-        {selectedId && !isNode && !isEdge && (
-          <p className="text-xs text-muted-foreground px-3 py-2">
-            Element not found in canvas
-          </p>
-        )}
-      </ScrollArea>
+      {/* Content — tabbed when evidence is available */}
+      {hasEvidence ? (
+        <Tabs defaultValue="properties" className="flex flex-col flex-1 overflow-hidden">
+          <TabsList className="rounded-none border-b border-border bg-card w-full justify-start h-8 p-0 gap-0 shrink-0">
+            <TabsTrigger
+              value="properties"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 h-full text-xs"
+            >
+              Properties
+            </TabsTrigger>
+            <TabsTrigger
+              value="evidence"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 h-full text-xs"
+            >
+              Evidence
+              <span className="ml-1 text-[9px] bg-primary/20 text-primary rounded px-1">
+                {evidence.length}
+              </span>
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="properties" className="flex-1 mt-0 overflow-hidden flex flex-col">
+            {propertiesContent}
+          </TabsContent>
+          <TabsContent value="evidence" className="flex-1 mt-0 overflow-hidden">
+            <ScrollArea className="h-full">
+              <EvidencePanel />
+            </ScrollArea>
+          </TabsContent>
+        </Tabs>
+      ) : (
+        propertiesContent
+      )}
     </div>
   );
 }

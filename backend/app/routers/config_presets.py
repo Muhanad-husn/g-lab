@@ -14,12 +14,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
-from app.dependencies import get_db, get_openrouter
+from app.dependencies import get_action_logger, get_db, get_openrouter
+from app.models.enums import ActionType
 from app.models.schemas import PresetCreate, PresetUpdate
+from app.services.action_log import ActionLogger
 from app.services.copilot.openrouter import OpenRouterClient
 from app.services.preset_service import PresetService
 from app.utils.response import envelope
@@ -27,6 +29,9 @@ from app.utils.response import envelope
 router = APIRouter()
 _svc = PresetService()
 _logger: Any = get_logger(__name__)
+
+# Presets are global (not session-scoped); use a stable system session ID for logging.
+_SYSTEM_SESSION = "system"
 
 
 # ---------------------------------------------------------------------------
@@ -51,11 +56,21 @@ async def list_presets(
 @router.post("/presets", status_code=201)
 async def create_preset(
     body: PresetCreate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
+    action_logger: ActionLogger = Depends(get_action_logger),
 ) -> dict[str, Any]:
     """Create a new user preset."""
     preset = await _svc.create(db, body)
     _logger.info("preset_created", preset_id=preset.id, name=preset.name)
+    background_tasks.add_task(
+        action_logger.log,
+        session_id=_SYSTEM_SESSION,
+        action_type=ActionType.PRESET_CREATE,
+        actor="user",
+        payload={"name": preset.name, "preset_id": preset.id},
+        result_summary={"is_system": preset.is_system},
+    )
     return envelope(preset.model_dump())
 
 
@@ -68,7 +83,9 @@ async def create_preset(
 async def update_preset(
     preset_id: str,
     body: PresetUpdate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
+    action_logger: ActionLogger = Depends(get_action_logger),
 ) -> dict[str, Any]:
     """Update a user preset. Returns 403 if the preset is a system preset."""
     try:
@@ -80,6 +97,14 @@ async def update_preset(
         raise HTTPException(status_code=404, detail="Preset not found")
 
     _logger.info("preset_updated", preset_id=preset_id)
+    background_tasks.add_task(
+        action_logger.log,
+        session_id=_SYSTEM_SESSION,
+        action_type=ActionType.PRESET_UPDATE,
+        actor="user",
+        payload={"preset_id": preset_id, "name": body.name},
+        result_summary={"updated": True},
+    )
     return envelope(updated.model_dump())
 
 
@@ -91,7 +116,9 @@ async def update_preset(
 @router.delete("/presets/{preset_id}")
 async def delete_preset(
     preset_id: str,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
+    action_logger: ActionLogger = Depends(get_action_logger),
 ) -> dict[str, Any]:
     """Delete a user preset. Returns 403 if the preset is a system preset."""
     try:
@@ -103,6 +130,14 @@ async def delete_preset(
         raise HTTPException(status_code=404, detail="Preset not found")
 
     _logger.info("preset_deleted", preset_id=preset_id)
+    background_tasks.add_task(
+        action_logger.log,
+        session_id=_SYSTEM_SESSION,
+        action_type=ActionType.PRESET_DELETE,
+        actor="user",
+        payload={"preset_id": preset_id},
+        result_summary={"deleted": True},
+    )
     return envelope({"deleted": preset_id})
 
 

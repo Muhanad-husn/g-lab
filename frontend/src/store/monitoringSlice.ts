@@ -35,6 +35,8 @@ export type Neo4jConnectionStatus =
   | "disconnected"
   | "unknown";
 
+export type CopilotStatus = "ready" | "unconfigured" | "unknown";
+
 export interface DevLogEntry {
   id: string;
   timestamp: number;
@@ -65,6 +67,10 @@ export interface MonitoringSlice {
   // Neo4j connection status
   neo4jStatus: Neo4jConnectionStatus;
   setNeo4jStatus: (status: Neo4jConnectionStatus) => void;
+
+  // Copilot status
+  copilotStatus: CopilotStatus;
+  setCopilotStatus: (status: CopilotStatus) => void;
 
   // Dev panel (dev mode only)
   devLogs: DevLogEntry[];
@@ -137,6 +143,13 @@ export const createMonitoringSlice: StateCreator<
 
   setNeo4jStatus: (status) => {
     set({ neo4jStatus: status });
+  },
+
+  // -- Copilot status -------------------------------------------------------
+  copilotStatus: "unknown",
+
+  setCopilotStatus: (status) => {
+    set({ copilotStatus: status });
   },
 
   // -- Dev panel ------------------------------------------------------------

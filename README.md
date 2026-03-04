@@ -109,13 +109,55 @@ Key constraints:
 
 ---
 
+## AI Copilot (Phase 2)
+
+G-Lab includes an optional AI Copilot that can answer questions about your graph, generate Cypher queries, and propose graph expansions — all via a streaming chat panel.
+
+### Setup
+
+1. Get an API key from [OpenRouter](https://openrouter.ai) (free tier available).
+2. Add it to your `.env`:
+
+   ```
+   OPENROUTER_API_KEY=sk-or-...
+   ```
+
+3. Restart the stack: `docker compose up`.
+
+The Copilot status dot in the toolbar turns green when the key is valid. No key = Copilot panel disabled; the rest of G-Lab works normally.
+
+### How It Works
+
+| Stage       | What happens                                                         |
+| ----------- | -------------------------------------------------------------------- |
+| **Routing** | Classifies your query: needs graph data? needs documents?            |
+| **Retrieval** | Generates and runs a safe read-only Cypher query against your Neo4j |
+| **Synthesis** | Streams a grounded answer with confidence score and evidence links  |
+| **Delta** | Proposes new nodes/edges to add to the canvas (Accept or Discard)   |
+
+Re-retrieval triggers automatically if confidence is below 40%.
+
+### Presets & Advanced Mode
+
+Presets bundle model assignments and token budgets. Three system presets are seeded at startup:
+
+| Preset      | Router model         | Synthesis model       | Use case             |
+| ----------- | -------------------- | --------------------- | -------------------- |
+| **Fast**    | claude-3-haiku       | claude-3-haiku        | Quick questions       |
+| **Balanced**| claude-3-haiku       | claude-3-sonnet       | Default              |
+| **Thorough**| claude-3-sonnet      | claude-3-opus         | Deep investigations  |
+
+Toggle **Advanced Mode** in the toolbar to assign individual models per pipeline stage and tune token budgets.
+
+---
+
 ## Roadmap
 
 | Phase | Description                                           | Status      |
 | ----- | ----------------------------------------------------- | ----------- |
 | 0     | Project bootstrap — tooling, logging, cache           | Complete    |
 | 1     | Core workbench — canvas, sessions, Neo4j proxy        | Complete    |
-| 2     | AI Copilot — LLM-assisted query and summarisation     | Planned     |
+| 2     | AI Copilot — LLM-assisted query and summarisation     | Complete    |
 | 3     | Document store — ChromaDB vector search, findings     | Planned     |
 
 ---

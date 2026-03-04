@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Toolbar } from "@/components/layout/Toolbar";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Navigator } from "@/components/navigator/Navigator";
@@ -11,8 +10,7 @@ import { DevPanel } from "@/components/dev/DevPanel";
 import { useSessionRestore } from "@/hooks/useSessionRestore";
 import { useHealthPolling } from "@/hooks/useHealthPolling";
 import { useReadOnlyMode } from "@/hooks/useReadOnlyMode";
-import { getPresets } from "@/api/config";
-import { useStore } from "@/store";
+import { usePresetRestore } from "@/hooks/usePresetRestore";
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
@@ -20,17 +18,7 @@ export default function App() {
   useSessionRestore();
   useHealthPolling();
   useReadOnlyMode();
-
-  const setPresets = useStore((s) => s.setPresets);
-
-  // Load backend presets once on mount
-  useEffect(() => {
-    getPresets()
-      .then(setPresets)
-      .catch(() => {
-        // Presets unavailable (copilot unconfigured) — non-fatal
-      });
-  }, [setPresets]);
+  usePresetRestore();
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground overflow-hidden">
