@@ -7,6 +7,7 @@ request → session preset → hard limit cap.
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 from typing import Any, ClassVar
 
@@ -28,6 +29,8 @@ class GuardrailService:
         "max_hops": 5,
         "max_nodes_per_expansion": 100,
         "cypher_timeout_ms": 30_000,
+        "copilot_timeout_ms": 120_000,
+        "max_concurrent_copilot": 1,
     }
 
     # Warning threshold: warn when canvas is at or above this.
@@ -115,6 +118,23 @@ class GuardrailService:
         if session_config is not None:
             preset = int(session_config.get("max_nodes_per_expansion", preset))
         return min(preset, self.HARD_LIMITS["max_nodes_per_expansion"])
+
+    def check_copilot_available(
+        self,
+        semaphore: asyncio.Semaphore,
+    ) -> GuardrailResult:
+        """Check whether the copilot semaphore slot is free.
+
+        Returns ``allowed=True`` when the semaphore can be acquired
+        immediately (i.e. no copilot request is currently in flight).
+        Returns ``allowed=False`` with a detail dict when busy.
+        """
+        if semaphore.locked():
+            return GuardrailResult(
+                allowed=False,
+                detail={"message": "Copilot is already processing a request"},
+            )
+        return GuardrailResult(allowed=True)
 
     @staticmethod
     def resolve_effective_limit(

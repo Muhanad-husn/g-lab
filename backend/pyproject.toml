@@ -46,6 +46,7 @@ select = ["E", "W", "F", "I", "N", "UP", "B", "SIM", "RUF"]
 ignore = [
     "B008",  # FastAPI Depends() in argument defaults — standard pattern
     "N815",  # camelCase Pydantic fields intentional — frontend type contracts use camelCase
+    "RUF001",  # en-dash / em-dash in LLM prompt strings — intentional for readability
 ]
 
 [tool.mypy]
