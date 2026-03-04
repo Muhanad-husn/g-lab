@@ -13,11 +13,14 @@ from app.config import Settings
 from app.core.logging import configure_logging, get_logger
 from app.dependencies import get_settings, set_session_factory
 from app.models.db import Base, create_engine, create_session_factory
+from app.routers import config_presets as config_presets_router
 from app.routers import findings as findings_router
 from app.routers import graph as graph_router
 from app.routers import sessions as sessions_router
 from app.services.action_log import ActionLogger
+from app.services.copilot.openrouter import OpenRouterClient
 from app.services.neo4j_service import Neo4jService
+from app.services.preset_service import PresetService
 from app.utils.exceptions import Neo4jConnectionError
 from app.utils.response import envelope
 
@@ -57,6 +60,24 @@ async def lifespan(app: FastAPI):  # type: ignore[no-untyped-def]
         session_factory=session_factory,
     )
 
+    # --- Seed system presets ---
+    preset_svc = PresetService()
+    async with session_factory() as db:
+        await preset_svc.seed_system_presets(db)
+    logger.info("system_presets_seeded")
+
+    # --- OpenRouter client (optional — requires API key) ---
+    settings_obj: Settings = get_settings()
+    if settings_obj.OPENROUTER_API_KEY:
+        app.state.openrouter_client = OpenRouterClient(
+            api_key=settings_obj.OPENROUTER_API_KEY,
+            base_url=settings_obj.OPENROUTER_BASE_URL,
+        )
+        logger.info("openrouter_client_ready")
+    else:
+        app.state.openrouter_client = None
+        logger.info("openrouter_not_configured")
+
     # --- Neo4j connection (degraded mode on failure) ---
     neo4j_service = Neo4jService()
     app.state.neo4j_service = neo4j_service
@@ -77,6 +98,11 @@ async def lifespan(app: FastAPI):  # type: ignore[no-untyped-def]
 
     # --- Shutdown ---
     await neo4j_service.close()
+    openrouter_client: OpenRouterClient | None = getattr(
+        app.state, "openrouter_client", None
+    )
+    if openrouter_client is not None:
+        await openrouter_client.close()
     await engine.dispose()
     logger.info("shutdown_complete")
 
@@ -111,6 +137,7 @@ def create_app() -> FastAPI:
     app.include_router(sessions_router.router, prefix="/api/v1/sessions")
     app.include_router(findings_router.router, prefix="/api/v1/sessions")
     app.include_router(graph_router.router, prefix="/api/v1/graph")
+    app.include_router(config_presets_router.router, prefix="/api/v1/config")
 
     # --- Health endpoint ---
     @app.get("/health")
@@ -122,10 +149,15 @@ def create_app() -> FastAPI:
         neo4j_status = (
             "connected" if neo4j_svc and neo4j_svc.is_connected() else "disconnected"
         )
+        or_client: OpenRouterClient | None = getattr(
+            request.app.state, "openrouter_client", None
+        )
+        copilot_status = "ready" if or_client is not None else "unconfigured"
         return envelope(
             {
                 "status": "ok",
                 "neo4j": neo4j_status,
+                "copilot": copilot_status,
             }
         )
 

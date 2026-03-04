@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.config import Settings
 from app.services.action_log import ActionLogger
+from app.services.copilot.openrouter import OpenRouterClient
 from app.services.neo4j_service import Neo4jService
 
 # Set during lifespan startup in main.py.
@@ -44,6 +45,11 @@ def get_action_logger(request: Request) -> ActionLogger:
     if logger is None:
         raise RuntimeError("ActionLogger not initialised — lifespan not started")
     return logger
+
+
+def get_openrouter(request: Request) -> OpenRouterClient | None:
+    """Return the OpenRouterClient from app state, or None if not configured."""
+    return getattr(request.app.state, "openrouter_client", None)
 
 
 def get_neo4j(request: Request) -> Neo4jService:
