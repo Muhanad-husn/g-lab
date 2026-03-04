@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { useStore } from "@/store";
+import { useGraphActions } from "@/hooks/useGraphActions";
 import { Button } from "@/components/ui/button";
 
 // ─── Property table ───────────────────────────────────────────────────────────
@@ -38,6 +40,22 @@ function PropertyTable({ properties }: { properties: Record<string, unknown> }) 
 
 export function NodeDetail({ id }: { id: string }) {
   const node = useStore((s) => s.nodes.find((n) => n.id === id));
+  const edges = useStore((s) => s.edges);
+  const presetConfig = useStore((s) => s.presetConfig);
+  const { expandNode } = useGraphActions();
+
+  const [hops, setHops] = useState(presetConfig.default_hops);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [expanding, setExpanding] = useState(false);
+
+  // Rel types from edges already connected to this node on the canvas
+  const connectedTypes = [
+    ...new Set(
+      edges
+        .filter((e) => e.source === id || e.target === id)
+        .map((e) => e.type),
+    ),
+  ].sort();
 
   if (!node) {
     return (
@@ -47,8 +65,27 @@ export function NodeDetail({ id }: { id: string }) {
     );
   }
 
+  function toggleType(type: string) {
+    setSelectedTypes((prev) =>
+      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
+    );
+  }
+
+  async function handleExpand() {
+    setExpanding(true);
+    try {
+      await expandNode(id, {
+        hops,
+        rel_types: selectedTypes.length > 0 ? selectedTypes : null,
+      });
+    } finally {
+      setExpanding(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-3 py-2">
+      {/* Labels */}
       <div className="px-3">
         <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
           Labels
@@ -65,6 +102,7 @@ export function NodeDetail({ id }: { id: string }) {
         </div>
       </div>
 
+      {/* Properties */}
       <div>
         <p className="px-3 text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
           Properties
@@ -72,16 +110,60 @@ export function NodeDetail({ id }: { id: string }) {
         <PropertyTable properties={node.properties} />
       </div>
 
-      <div className="px-3">
-        {/* Expand wired in Stage 6 */}
+      {/* Expand controls */}
+      <div className="px-3 flex flex-col gap-2">
+        {/* Hop count selector */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground shrink-0">Hops</span>
+          <div className="flex gap-1">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button
+                key={n}
+                onClick={() => setHops(n)}
+                className={`h-5 w-5 rounded text-[10px] border transition-colors ${
+                  hops === n
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border text-muted-foreground hover:border-primary/50"
+                }`}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Relationship type filter — shown only when connected edges exist */}
+        {connectedTypes.length > 0 && (
+          <div>
+            <p className="text-[10px] text-muted-foreground mb-1">
+              Filter by type (empty = all)
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {connectedTypes.map((type) => (
+                <button
+                  key={type}
+                  onClick={() => toggleType(type)}
+                  className={`px-2 py-0.5 rounded border text-[10px] transition-colors ${
+                    selectedTypes.includes(type)
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:border-primary/50"
+                  }`}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <Button
           variant="outline"
           size="sm"
           className="w-full text-xs"
-          disabled
-          title="Node expansion available in Stage 6"
+          onClick={handleExpand}
+          disabled={expanding}
         >
-          Expand Node
+          {expanding ? "Expanding…" : "Expand Node"}
         </Button>
       </div>
     </div>

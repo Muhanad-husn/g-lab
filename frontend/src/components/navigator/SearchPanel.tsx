@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { search } from "@/api/graph";
 import { useStore } from "@/store";
+import { useGraphActions } from "@/hooks/useGraphActions";
 import type { GraphNode } from "@/lib/types";
 
 // ─── Result item ──────────────────────────────────────────────────────────────
@@ -13,9 +14,10 @@ import type { GraphNode } from "@/lib/types";
 interface ResultItemProps {
   node: GraphNode;
   onAdd: (node: GraphNode) => void;
+  onAddExpand: (node: GraphNode) => void;
 }
 
-function ResultItem({ node, onAdd }: ResultItemProps) {
+function ResultItem({ node, onAdd, onAddExpand }: ResultItemProps) {
   const label = node.labels[0] ?? "Node";
   // Show the first string property as display name
   const displayName =
@@ -32,14 +34,26 @@ function ResultItem({ node, onAdd }: ResultItemProps) {
           {String(displayName)}
         </span>
       </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-6 px-2 text-xs shrink-0"
-        onClick={() => onAdd(node)}
-      >
-        Add
-      </Button>
+      <div className="flex gap-1 shrink-0">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 px-2 text-xs"
+          onClick={() => onAdd(node)}
+          title="Add to canvas"
+        >
+          Add
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 px-2 text-xs"
+          onClick={() => onAddExpand(node)}
+          title="Add to canvas and expand neighbours"
+        >
+          +Expand
+        </Button>
+      </div>
     </div>
   );
 }
@@ -53,6 +67,7 @@ export function SearchPanel() {
   const [error, setError] = useState<string | null>(null);
 
   const addNodes = useStore((s) => s.addNodes);
+  const { expandNode } = useGraphActions();
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -73,6 +88,11 @@ export function SearchPanel() {
 
   function handleAdd(node: GraphNode) {
     addNodes([node]);
+  }
+
+  function handleAddExpand(node: GraphNode) {
+    addNodes([node]);
+    void expandNode(node.id);
   }
 
   return (
@@ -110,7 +130,12 @@ export function SearchPanel() {
           </div>
         )}
         {results.map((node) => (
-          <ResultItem key={node.id} node={node} onAdd={handleAdd} />
+          <ResultItem
+            key={node.id}
+            node={node}
+            onAdd={handleAdd}
+            onAddExpand={handleAddExpand}
+          />
         ))}
       </ScrollArea>
     </div>
