@@ -114,9 +114,7 @@ def _parse_intent(text: str) -> RouterIntent:
     # Strip markdown code fences if present
     if text.startswith("```"):
         lines = text.splitlines()
-        text = "\n".join(
-            line for line in lines if not line.startswith("```")
-        ).strip()
+        text = "\n".join(line for line in lines if not line.startswith("```")).strip()
 
     try:
         data = json.loads(text)
