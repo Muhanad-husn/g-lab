@@ -184,16 +184,20 @@ class PresetConfig(BaseModel):
     expansionLimit: int = 25
     docTopK: int = 5
     docRerankerK: int = 3
-    models: dict[str, str] = Field(default_factory=lambda: {
-        "router": "anthropic/claude-3-haiku-20240307",
-        "graphRetrieval": "anthropic/claude-3-5-sonnet-20241022",
-        "synthesiser": "anthropic/claude-sonnet-4-20250514",
-    })
-    tokenBudgets: dict[str, int] = Field(default_factory=lambda: {
-        "router": 256,
-        "graphRetrieval": 512,
-        "synthesiser": 4096,
-    })
+    models: dict[str, str] = Field(
+        default_factory=lambda: {
+            "router": "anthropic/claude-3-haiku-20240307",
+            "graphRetrieval": "anthropic/claude-3-5-sonnet-20241022",
+            "synthesiser": "anthropic/claude-sonnet-4-20250514",
+        }
+    )
+    tokenBudgets: dict[str, int] = Field(
+        default_factory=lambda: {
+            "router": 256,
+            "graphRetrieval": 512,
+            "synthesiser": 4096,
+        }
+    )
     advancedMode: bool = False
 
 

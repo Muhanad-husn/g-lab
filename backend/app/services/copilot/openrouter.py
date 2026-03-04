@@ -118,9 +118,7 @@ class OpenRouterClient:
             return await self._stream_completion(payload)
         return await self._single_completion(payload)
 
-    async def _single_completion(
-        self, payload: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def _single_completion(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Non-streaming completion with 429 retry."""
         client = await self._get_client()
 
@@ -152,9 +150,7 @@ class OpenRouterClient:
 
         raise OpenRouterError("Unexpected retry exhaustion")  # pragma: no cover
 
-    async def _stream_completion(
-        self, payload: dict[str, Any]
-    ) -> list[str]:
+    async def _stream_completion(self, payload: dict[str, Any]) -> list[str]:
         """Streaming completion — collects text chunks into a list.
 
         For the real pipeline, use ``stream_completion_iter`` for an async
@@ -165,9 +161,7 @@ class OpenRouterClient:
             chunks.append(chunk)
         return chunks
 
-    async def stream_completion_iter(
-        self, payload: dict[str, Any]
-    ) -> Any:
+    async def stream_completion_iter(self, payload: dict[str, Any]) -> Any:
         """Yield text chunks from a streaming completion.
 
         Implements 429 retry at the connection level.
@@ -176,9 +170,7 @@ class OpenRouterClient:
         payload = {**payload, "stream": True}
 
         for attempt in range(_MAX_RETRIES):
-            async with client.stream(
-                "POST", "/chat/completions", json=payload
-            ) as resp:
+            async with client.stream("POST", "/chat/completions", json=payload) as resp:
                 if resp.status_code == 429:
                     if attempt < _MAX_RETRIES - 1:
                         delay = _BASE_DELAY * (2**attempt)

@@ -6,9 +6,7 @@ System presets (is_system=1) cannot be updated or deleted.
 
 from __future__ import annotations
 
-import json
 import uuid
-from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -96,9 +94,7 @@ class PresetService:
             return None
         return self._to_response(row)
 
-    async def create(
-        self, db: AsyncSession, data: PresetCreate
-    ) -> PresetResponse:
+    async def create(self, db: AsyncSession, data: PresetCreate) -> PresetResponse:
         """Create a new user preset."""
         preset = Preset(
             id=f"preset-{uuid.uuid4().hex[:12]}",

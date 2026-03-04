@@ -102,9 +102,7 @@ class ConversationMessage(Base):
     role: Mapped[str] = mapped_column(Text, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     timestamp: Mapped[str] = mapped_column(Text, nullable=False)
-    metadata_json: Mapped[str | None] = mapped_column(
-        "metadata", Text, nullable=True
-    )
+    metadata_json: Mapped[str | None] = mapped_column("metadata", Text, nullable=True)
 
 
 def _set_wal_mode(dbapi_conn: Any, _connection_record: Any) -> None:
