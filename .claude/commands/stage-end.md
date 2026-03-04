@@ -24,6 +24,11 @@ Determine phase from stage number:
    - If stage touched frontend: `cd frontend && npx tsc --noEmit && npm test -- --run`
    - Report results. If failures, stop and let the user decide.
 
+3a. **Commit ruff/formatter auto-fixes (if any):**
+   - Run `git status` — if any files are modified, run `git diff --stat` to review.
+   - If changes are purely from ruff/prettier auto-formatting (import order, unused imports, blank lines, noqa tags), stage and commit them as `<prefix>-stage-N.end: ruff/prettier auto-formatting cleanup` before proceeding.
+   - If changes include substantive code edits, pause and flag them to the user.
+
 4. **Update memory:**
    - Run `/update-docs` to sync all project memory and documentation.
    - This covers MEMORY.md, core-utils.md, and any CLAUDE.md updates.
