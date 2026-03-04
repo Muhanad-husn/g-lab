@@ -169,3 +169,138 @@ export interface GuardrailDetail {
   hard_limit: number;
   current: number;
 }
+
+// ─── Phase 2: Presets ─────────────────────────────────────────────────────────
+// Source of truth: docs/ARCHITECTURE.md §14.3 / backend PresetConfig
+
+export interface PresetConfig {
+  hops: number;
+  expansionLimit: number;
+  docTopK: number;
+  docRerankerK: number;
+  models: {
+    router: string;
+    graphRetrieval: string;
+    synthesiser: string;
+  };
+  tokenBudgets: {
+    router: number;
+    graphRetrieval: number;
+    synthesiser: number;
+  };
+  advancedMode: boolean;
+}
+
+export interface PresetCreate {
+  name: string;
+  config: PresetConfig;
+}
+
+export interface PresetUpdate {
+  name?: string | null;
+  config?: PresetConfig | null;
+}
+
+export interface PresetResponse {
+  id: string;
+  name: string;
+  is_system: boolean;
+  config: PresetConfig;
+}
+
+// ─── Phase 2: Copilot ─────────────────────────────────────────────────────────
+// Source of truth: docs/ARCHITECTURE.md §14.3 / backend copilot schemas
+
+export interface CopilotQueryRequest {
+  query: string;
+  session_id: string;
+  include_graph_context?: boolean;
+}
+
+export interface CopilotMessage {
+  id: string;
+  session_id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+  metadata?: Record<string, unknown> | null;
+}
+
+export interface RouterIntent {
+  needs_graph: boolean;
+  needs_docs: boolean;
+  cypher_hint: string | null;
+  doc_query: string | null;
+}
+
+export interface ConfidenceScore {
+  score: number; // 0.0–1.0
+  band: "high" | "medium" | "low";
+}
+
+export interface GraphDelta {
+  add_nodes: GraphNode[];
+  add_edges: GraphEdge[];
+}
+
+export interface EvidenceSource {
+  type: "graph_path" | "doc_chunk";
+  id: string;
+  content: string;
+}
+
+// ─── Phase 2: SSE Events ──────────────────────────────────────────────────────
+// Source of truth: docs/ARCHITECTURE.md §5.5
+
+export interface SSETextChunkEvent {
+  type: "text_chunk";
+  data: { content: string };
+}
+
+export interface SSEEvidenceEvent {
+  type: "evidence";
+  data: { sources: EvidenceSource[] };
+}
+
+export interface SSEGraphDeltaEvent {
+  type: "graph_delta";
+  data: GraphDelta;
+}
+
+export interface SSEConfidenceEvent {
+  type: "confidence";
+  data: ConfidenceScore;
+}
+
+export interface SSEStatusEvent {
+  type: "status";
+  data: { stage: string };
+}
+
+export interface SSEDoneEvent {
+  type: "done";
+  data: Record<string, never>;
+}
+
+export interface SSEErrorEvent {
+  type: "error";
+  data: { code: string; message: string };
+}
+
+export type SSEEvent =
+  | SSETextChunkEvent
+  | SSEEvidenceEvent
+  | SSEGraphDeltaEvent
+  | SSEConfidenceEvent
+  | SSEStatusEvent
+  | SSEDoneEvent
+  | SSEErrorEvent;
+
+// ─── Phase 2: OpenRouter Models ───────────────────────────────────────────────
+
+export interface ModelInfo {
+  id: string;
+  name: string;
+  context_length?: number;
+  pricing?: { prompt: string; completion: string };
+}
