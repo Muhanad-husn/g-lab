@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, FileText } from "lucide-react";
+import { Camera, FileText, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { createFinding } from "@/api/findings";
 import { useStore } from "@/store";
+import { captureCanvasSnapshot, dataUrlToBase64 } from "@/lib/cytoscapeRef";
 import type { FindingResponse } from "@/lib/types";
 
 // ─── Finding card ─────────────────────────────────────────────────────────────
@@ -27,6 +28,12 @@ function FindingCard({ finding }: { finding: FindingResponse }) {
           <span className="text-xs font-medium text-foreground truncate">
             {finding.title}
           </span>
+          {finding.has_snapshot && (
+            <Camera
+              className="h-3 w-3 shrink-0 text-blue-400"
+              aria-label="Has canvas snapshot"
+            />
+          )}
         </div>
         <span className="text-[10px] text-muted-foreground shrink-0">{date}</span>
       </div>
@@ -51,8 +58,20 @@ function AddFindingDialog({ open, onClose, sessionId }: AddFindingDialogProps) {
   const addFinding = useStore((s) => s.addFinding);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [includeSnapshot, setIncludeSnapshot] = useState(false);
+  const [snapshotPreview, setSnapshotPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function handleSnapshotToggle(checked: boolean) {
+    setIncludeSnapshot(checked);
+    if (checked) {
+      const dataUrl = captureCanvasSnapshot();
+      setSnapshotPreview(dataUrl);
+    } else {
+      setSnapshotPreview(null);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -61,13 +80,18 @@ function AddFindingDialog({ open, onClose, sessionId }: AddFindingDialogProps) {
     setSaving(true);
     setError(null);
     try {
+      const snapshotBase64 =
+        includeSnapshot && snapshotPreview
+          ? dataUrlToBase64(snapshotPreview)
+          : null;
+
       const finding = await createFinding(sessionId, {
         title: title.trim(),
         body: body.trim() || null,
+        snapshot_png: snapshotBase64,
       });
       addFinding(finding);
-      setTitle("");
-      setBody("");
+      resetForm();
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save finding");
@@ -76,11 +100,17 @@ function AddFindingDialog({ open, onClose, sessionId }: AddFindingDialogProps) {
     }
   }
 
+  function resetForm() {
+    setTitle("");
+    setBody("");
+    setIncludeSnapshot(false);
+    setSnapshotPreview(null);
+    setError(null);
+  }
+
   function handleOpenChange(open: boolean) {
     if (!open) {
-      setTitle("");
-      setBody("");
-      setError(null);
+      resetForm();
       onClose();
     }
   }
@@ -93,7 +123,10 @@ function AddFindingDialog({ open, onClose, sessionId }: AddFindingDialogProps) {
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-foreground" htmlFor="finding-title">
+            <label
+              className="text-xs font-medium text-foreground"
+              htmlFor="finding-title"
+            >
               Title <span className="text-destructive">*</span>
             </label>
             <Input
@@ -107,7 +140,10 @@ function AddFindingDialog({ open, onClose, sessionId }: AddFindingDialogProps) {
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-foreground" htmlFor="finding-body">
+            <label
+              className="text-xs font-medium text-foreground"
+              htmlFor="finding-body"
+            >
               Notes{" "}
               <span className="text-muted-foreground font-normal">(optional)</span>
             </label>
@@ -120,6 +156,38 @@ function AddFindingDialog({ open, onClose, sessionId }: AddFindingDialogProps) {
               className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
             />
           </div>
+
+          {/* Snapshot toggle */}
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={includeSnapshot}
+              onChange={(e) => handleSnapshotToggle(e.target.checked)}
+              className="h-3.5 w-3.5 rounded border-input accent-primary"
+            />
+            <span className="text-xs text-foreground flex items-center gap-1">
+              <Camera className="h-3 w-3 text-muted-foreground" />
+              Include canvas snapshot
+            </span>
+          </label>
+
+          {/* Snapshot preview */}
+          {includeSnapshot && (
+            <div className="rounded-md border border-border overflow-hidden bg-muted/30">
+              {snapshotPreview ? (
+                <img
+                  src={snapshotPreview}
+                  alt="Canvas snapshot preview"
+                  className="w-full max-h-40 object-contain"
+                />
+              ) : (
+                <p className="text-xs text-muted-foreground px-3 py-2">
+                  Canvas is empty — no snapshot available.
+                </p>
+              )}
+            </div>
+          )}
+
           {error && <p className="text-xs text-destructive">{error}</p>}
           <DialogFooter>
             <Button

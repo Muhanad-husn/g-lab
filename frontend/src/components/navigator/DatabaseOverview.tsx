@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { getSchema, getSamples, getRelSamples } from "@/api/graph";
 import type { LabelInfo, RelTypeInfo } from "@/lib/types";
+
+const SAMPLE_PAGE_SIZE = 5;
 
 // ─── Count badge ──────────────────────────────────────────────────────────────
 
@@ -16,14 +18,23 @@ function CountBadge({ count }: { count: number | null }) {
   );
 }
 
-// ─── Sample table ─────────────────────────────────────────────────────────────
+// ─── Sample table with pagination ─────────────────────────────────────────────
 
 function SampleTable({ rows }: { rows: Record<string, unknown>[] }) {
+  const [page, setPage] = useState(0);
+
   if (rows.length === 0) {
-    return <p className="px-4 py-2 text-xs text-muted-foreground">No samples found.</p>;
+    return (
+      <p className="px-4 py-2 text-xs text-muted-foreground">No samples found.</p>
+    );
   }
 
   const columns = Object.keys(rows[0]);
+  const totalPages = Math.ceil(rows.length / SAMPLE_PAGE_SIZE);
+  const pageRows = rows.slice(
+    page * SAMPLE_PAGE_SIZE,
+    (page + 1) * SAMPLE_PAGE_SIZE,
+  );
 
   return (
     <div className="overflow-x-auto px-2 pb-2">
@@ -41,10 +52,13 @@ function SampleTable({ rows }: { rows: Record<string, unknown>[] }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, i) => (
+          {pageRows.map((row, i) => (
             <tr key={i} className="hover:bg-accent/30">
               {columns.map((col) => (
-                <td key={col} className="px-2 py-1 text-foreground max-w-[120px] truncate">
+                <td
+                  key={col}
+                  className="px-2 py-1 text-foreground max-w-[120px] truncate"
+                >
                   {row[col] === null ? (
                     <span className="italic text-muted-foreground">null</span>
                   ) : (
@@ -56,6 +70,33 @@ function SampleTable({ rows }: { rows: Record<string, unknown>[] }) {
           ))}
         </tbody>
       </table>
+
+      {/* Pagination controls — only shown when there's more than one page */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-1 px-1">
+          <span className="text-[10px] text-muted-foreground">
+            {page + 1} / {totalPages}
+          </span>
+          <div className="flex gap-1">
+            <button
+              onClick={() => setPage((p) => p - 1)}
+              disabled={page === 0}
+              className="p-0.5 rounded hover:bg-accent/50 disabled:opacity-30 disabled:cursor-not-allowed"
+              aria-label="Previous page"
+            >
+              <ChevronLeft className="h-3 w-3" />
+            </button>
+            <button
+              onClick={() => setPage((p) => p + 1)}
+              disabled={page >= totalPages - 1}
+              className="p-0.5 rounded hover:bg-accent/50 disabled:opacity-30 disabled:cursor-not-allowed"
+              aria-label="Next page"
+            >
+              <ChevronRight className="h-3 w-3" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -98,7 +139,7 @@ function LabelRow({ name, count, isRelType = false }: LabelRowProps) {
         {expanded ? (
           <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
         ) : (
-          <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
+          <ChevronRightIcon className="h-3 w-3 shrink-0 text-muted-foreground" />
         )}
         <span className="flex-1 text-left text-foreground font-mono">{name}</span>
         <CountBadge count={count} />
