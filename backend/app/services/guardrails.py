@@ -89,21 +89,32 @@ class GuardrailService:
         Returns allowed=True with the clamped value in detail.
         """
         hard_max = self.HARD_LIMITS["max_hops"]
-        effective = self.resolve_effective_limit(
-            requested, preset_default, hard_max
-        )
+        effective = self.resolve_effective_limit(requested, preset_default, hard_max)
 
         warnings: list[str] = []
         if requested > hard_max:
-            warnings.append(
-                f"Hops clamped from {requested} to {hard_max}"
-            )
+            warnings.append(f"Hops clamped from {requested} to {hard_max}")
 
         return GuardrailResult(
             allowed=True,
             warnings=warnings,
             detail={"effective_hops": effective},
         )
+
+    def resolve_expansion_limits(
+        self,
+        session_config: dict[str, Any] | None = None,
+    ) -> int:
+        """Return the effective per-expansion node limit from session config.
+
+        Resolution order: session_config → Standard Investigation default (25)
+        → hard_max cap.  Call this to get the preset_limit for check_expansion
+        when you have a session context available.
+        """
+        preset = 25  # Standard Investigation default
+        if session_config is not None:
+            preset = int(session_config.get("max_nodes_per_expansion", preset))
+        return min(preset, self.HARD_LIMITS["max_nodes_per_expansion"])
 
     @staticmethod
     def resolve_effective_limit(
