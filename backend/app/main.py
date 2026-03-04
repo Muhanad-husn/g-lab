@@ -14,6 +14,7 @@ from app.core.logging import configure_logging, get_logger
 from app.dependencies import get_settings, set_session_factory
 from app.models.db import Base, create_engine, create_session_factory
 from app.routers import findings as findings_router
+from app.routers import graph as graph_router
 from app.routers import sessions as sessions_router
 from app.services.action_log import ActionLogger
 from app.services.neo4j_service import Neo4jService
@@ -109,6 +110,7 @@ def create_app() -> FastAPI:
     # --- Routers ---
     app.include_router(sessions_router.router, prefix="/api/v1/sessions")
     app.include_router(findings_router.router, prefix="/api/v1/sessions")
+    app.include_router(graph_router.router, prefix="/api/v1/graph")
 
     # --- Health endpoint ---
     @app.get("/health")
