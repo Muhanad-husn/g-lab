@@ -15,10 +15,7 @@ export type AllSlices = GraphSlice &
 
 // ─── Bound store ───────────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyArgs = any[];
-
-export const useStore = create<AllSlices>()((...a: AnyArgs) => ({
+export const useStore = create<AllSlices>()((...a) => ({
   ...createGraphSlice(...a),
   ...createSessionSlice(...a),
   ...createUiSlice(...a),
