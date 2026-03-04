@@ -172,3 +172,86 @@ class FindingResponse(BaseModel):
     body: str | None
     has_snapshot: bool
     canvas_context: list[str] | None
+
+
+# ---------------------------------------------------------------------------
+# Preset schemas (Phase 2 — §14.3)
+# ---------------------------------------------------------------------------
+
+
+class PresetConfig(BaseModel):
+    hops: int = 2
+    expansionLimit: int = 25
+    docTopK: int = 5
+    docRerankerK: int = 3
+    models: dict[str, str] = Field(default_factory=lambda: {
+        "router": "anthropic/claude-3-haiku-20240307",
+        "graphRetrieval": "anthropic/claude-3-5-sonnet-20241022",
+        "synthesiser": "anthropic/claude-sonnet-4-20250514",
+    })
+    tokenBudgets: dict[str, int] = Field(default_factory=lambda: {
+        "router": 256,
+        "graphRetrieval": 512,
+        "synthesiser": 4096,
+    })
+    advancedMode: bool = False
+
+
+class PresetCreate(BaseModel):
+    name: str
+    config: PresetConfig
+
+
+class PresetUpdate(BaseModel):
+    name: str | None = None
+    config: PresetConfig | None = None
+
+
+class PresetResponse(BaseModel):
+    id: str
+    name: str
+    is_system: bool
+    config: PresetConfig
+
+
+# ---------------------------------------------------------------------------
+# Copilot schemas (Phase 2 — §14.3)
+# ---------------------------------------------------------------------------
+
+
+class CopilotQueryRequest(BaseModel):
+    query: str
+    session_id: str
+    include_graph_context: bool = True
+
+
+class CopilotMessage(BaseModel):
+    id: str
+    session_id: str
+    role: str
+    content: str
+    timestamp: str
+    metadata: dict[str, Any] | None = None
+
+
+class RouterIntent(BaseModel):
+    needs_graph: bool = True
+    needs_docs: bool = False
+    cypher_hint: str | None = None
+    doc_query: str | None = None
+
+
+class ConfidenceScore(BaseModel):
+    score: float = Field(ge=0.0, le=1.0)
+    band: Literal["high", "medium", "low"]
+
+
+class GraphDelta(BaseModel):
+    add_nodes: list[GraphNode] = Field(default_factory=list)
+    add_edges: list[GraphEdge] = Field(default_factory=list)
+
+
+class EvidenceSource(BaseModel):
+    type: Literal["graph_path", "doc_chunk"]
+    id: str
+    content: str

@@ -18,6 +18,10 @@ class ActionType(StrEnum):
     SESSION_EXPORT = "session_export"
     SESSION_IMPORT = "session_import"
     RAW_QUERY = "raw_query"
+    COPILOT_QUERY = "copilot_query"
+    PRESET_CREATE = "preset_create"
+    PRESET_UPDATE = "preset_update"
+    PRESET_DELETE = "preset_delete"
 
 
 class SessionStatus(StrEnum):

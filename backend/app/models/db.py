@@ -81,6 +81,32 @@ class ActionLog(Base):
     guardrail_warnings: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+class Preset(Base):
+    """Copilot configuration preset."""
+
+    __tablename__ = "presets"
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    is_system: Mapped[int] = mapped_column(default=0)
+    config: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class ConversationMessage(Base):
+    """Copilot conversation message within a session."""
+
+    __tablename__ = "conversation_messages"
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    session_id: Mapped[str] = mapped_column(Text, nullable=False)
+    role: Mapped[str] = mapped_column(Text, nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    timestamp: Mapped[str] = mapped_column(Text, nullable=False)
+    metadata_json: Mapped[str | None] = mapped_column(
+        "metadata", Text, nullable=True
+    )
+
+
 def _set_wal_mode(dbapi_conn: Any, _connection_record: Any) -> None:
     """Enable WAL journal mode for SQLite."""
     cursor = dbapi_conn.cursor()
