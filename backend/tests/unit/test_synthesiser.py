@@ -10,7 +10,6 @@ import pytest
 from app.services.copilot.sse import SSEEvent
 from app.services.copilot.synthesiser import SynthesiserService, _format_graph_results
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

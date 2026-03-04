@@ -9,7 +9,6 @@ import pytest
 
 from app.services.copilot.openrouter import OpenRouterClient, OpenRouterError
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

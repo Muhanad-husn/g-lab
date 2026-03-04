@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import tempfile
 from collections.abc import AsyncGenerator
-from pathlib import Path
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -18,7 +15,6 @@ from app.models.db import Base
 from app.routers import config_presets as config_presets_router
 from app.services.copilot.openrouter import OpenRouterClient
 from app.services.preset_service import PresetService
-
 
 # ---------------------------------------------------------------------------
 # Fixture

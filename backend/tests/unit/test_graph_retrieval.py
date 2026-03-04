@@ -12,8 +12,6 @@ from app.services.copilot.graph_retrieval import (
     _clean_cypher_text,
     _rows_to_evidence,
 )
-from app.utils.exceptions import CypherValidationError
-
 
 # ---------------------------------------------------------------------------
 # Helpers

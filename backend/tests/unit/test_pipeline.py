@@ -16,7 +16,6 @@ from app.models.schemas import (
 from app.services.copilot.pipeline import CopilotPipeline, _broaden_hint
 from app.services.copilot.sse import SSEEvent
 
-
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
 # ---------------------------------------------------------------------------
@@ -147,7 +146,7 @@ async def test_re_retrieval_on_low_confidence():
             for ev in re_events:
                 yield ev
 
-    async def fake_retrieve(self: Any, **kwargs: Any) -> tuple[list, list]:  # noqa: ARG001
+    async def fake_retrieve(self: Any, **kwargs: Any) -> tuple[list, list]:
         call_count["retrieve"] += 1
         return [], []
 

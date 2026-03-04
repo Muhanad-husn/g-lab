@@ -12,7 +12,8 @@ they arrive.
 from __future__ import annotations
 
 import json
-from typing import Any, AsyncGenerator
+from collections.abc import AsyncGenerator
+from typing import Any
 
 from app.core.logging import get_logger
 from app.services.copilot.openrouter import OpenRouterClient
@@ -39,7 +40,7 @@ class SynthesiserService:
         model: str = _DEFAULT_MODEL,
         temperature: float = 0.7,
         max_tokens: int = 2048,
-        stream: bool = True,  # noqa: ARG002 — reserved for future non-stream path
+        stream: bool = True,
     ) -> AsyncGenerator[SSEEvent, None]:
         """Return an async generator that yields typed SSE events.
 
