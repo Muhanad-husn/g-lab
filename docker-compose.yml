@@ -14,5 +14,14 @@ services:
       - GLAB_DATA_DIR=/data
       - GLAB_LOG_LEVEL=${GLAB_LOG_LEVEL:-INFO}
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:5173:80"
+    depends_on:
+      - backend
+
 volumes:
   glab-data:

@@ -1,0 +1,209 @@
+import { useEffect, useState } from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { getSchema, getSamples, getRelSamples } from "@/api/graph";
+import type { LabelInfo, RelTypeInfo } from "@/lib/types";
+
+// ─── Count badge ──────────────────────────────────────────────────────────────
+
+function CountBadge({ count }: { count: number | null }) {
+  if (count === null) return null;
+  return (
+    <span className="text-[10px] text-muted-foreground tabular-nums">
+      {count.toLocaleString()}
+    </span>
+  );
+}
+
+// ─── Sample table ─────────────────────────────────────────────────────────────
+
+function SampleTable({ rows }: { rows: Record<string, unknown>[] }) {
+  if (rows.length === 0) {
+    return <p className="px-4 py-2 text-xs text-muted-foreground">No samples found.</p>;
+  }
+
+  const columns = Object.keys(rows[0]);
+
+  return (
+    <div className="overflow-x-auto px-2 pb-2">
+      <table className="w-full text-[10px] border-collapse">
+        <thead>
+          <tr>
+            {columns.map((col) => (
+              <th
+                key={col}
+                className="px-2 py-1 text-left font-medium text-muted-foreground border-b border-border"
+              >
+                {col}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i} className="hover:bg-accent/30">
+              {columns.map((col) => (
+                <td key={col} className="px-2 py-1 text-foreground max-w-[120px] truncate">
+                  {row[col] === null ? (
+                    <span className="italic text-muted-foreground">null</span>
+                  ) : (
+                    String(row[col])
+                  )}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ─── Expandable label row ─────────────────────────────────────────────────────
+
+interface LabelRowProps {
+  name: string;
+  count: number | null;
+  isRelType?: boolean;
+}
+
+function LabelRow({ name, count, isRelType = false }: LabelRowProps) {
+  const [expanded, setExpanded] = useState(false);
+  const [samples, setSamples] = useState<Record<string, unknown>[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function handleToggle() {
+    const next = !expanded;
+    setExpanded(next);
+    if (next && samples === null) {
+      setLoading(true);
+      try {
+        const data = isRelType ? await getRelSamples(name) : await getSamples(name);
+        setSamples(data);
+      } catch {
+        setSamples([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+  }
+
+  return (
+    <div>
+      <button
+        onClick={handleToggle}
+        className="flex w-full items-center gap-1.5 px-3 py-1.5 text-xs hover:bg-accent/50 rounded-sm transition-colors"
+      >
+        {expanded ? (
+          <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
+        )}
+        <span className="flex-1 text-left text-foreground font-mono">{name}</span>
+        <CountBadge count={count} />
+      </button>
+      {expanded && (
+        <div className="ml-3 border-l border-border">
+          {loading ? (
+            <p className="px-4 py-2 text-xs text-muted-foreground">Loading…</p>
+          ) : (
+            samples !== null && <SampleTable rows={samples} />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Database overview ────────────────────────────────────────────────────────
+
+export function DatabaseOverview() {
+  const [labels, setLabels] = useState<LabelInfo[]>([]);
+  const [relTypes, setRelTypes] = useState<RelTypeInfo[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    getSchema()
+      .then((schema) => {
+        if (cancelled) return;
+        setLabels(schema.labels);
+        setRelTypes(schema.relationship_types);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setError(
+          err instanceof Error ? err.message : "Failed to load schema",
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full text-muted-foreground text-xs">
+        Loading schema…
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-xs gap-1 px-4 text-center">
+        <span className="text-destructive">{error}</span>
+        <span className="text-[10px]">Check Neo4j connection</span>
+      </div>
+    );
+  }
+
+  if (labels.length === 0 && relTypes.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full text-muted-foreground text-xs">
+        Connect to Neo4j to view schema
+      </div>
+    );
+  }
+
+  return (
+    <ScrollArea className="h-full">
+      <div className="px-1 py-2 space-y-0.5">
+        {labels.length > 0 && (
+          <>
+            <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Node Labels ({labels.length})
+            </p>
+            {labels.map((l) => (
+              <LabelRow key={l.name} name={l.name} count={l.count} />
+            ))}
+          </>
+        )}
+
+        {labels.length > 0 && relTypes.length > 0 && (
+          <Separator className="my-2" />
+        )}
+
+        {relTypes.length > 0 && (
+          <>
+            <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Relationship Types ({relTypes.length})
+            </p>
+            {relTypes.map((r) => (
+              <LabelRow key={r.name} name={r.name} count={r.count} isRelType />
+            ))}
+          </>
+        )}
+      </div>
+    </ScrollArea>
+  );
+}
