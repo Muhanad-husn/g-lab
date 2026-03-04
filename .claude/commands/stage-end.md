@@ -1,5 +1,11 @@
 Close the current stage after all runs are complete.
 
+## Phase Detection
+
+Determine phase from stage number:
+- **Stage 1–7 → Phase 1:** prefix = `ph1`, plan = `docs/IMPLEMENTATION_PLAN.md`
+- **Stage 8+ → Phase 2:** prefix = `ph2`, plan = `docs/IMPLEMENTATION_PLAN_PH2.md`
+
 ## Steps
 
 1. **Verify branch:**
@@ -8,8 +14,9 @@ Close the current stage after all runs are complete.
 
 2. **Verify all runs complete:**
    - Extract stage number N from branch name.
-   - Run `git log --oneline --grep='ph1-stage-N.'` to list completed runs.
-   - Compare against the run list in `docs/IMPLEMENTATION_PLAN.md` for Stage N.
+   - Determine phase prefix from N (see Phase Detection).
+   - Run `git log --oneline --grep='<prefix>-stage-N.'` to list completed runs.
+   - Compare against the run list in the implementation plan for this phase.
    - If any runs are missing, list them and abort: "Incomplete runs: N.R, N.R. Run `/next-run` to continue."
 
 3. **Run full test suite:**
