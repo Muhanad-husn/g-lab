@@ -1,4 +1,10 @@
-Set up context for Stage $ARGUMENTS of Phase 1.
+Set up context for Stage $ARGUMENTS.
+
+## Phase Detection
+
+Determine phase from stage number:
+- **Stage 1–7 → Phase 1:** prefix = `ph1`, plan = `docs/IMPLEMENTATION_PLAN.md`, structure = `docs/STRUCTURE_PH1.md`
+- **Stage 8+ → Phase 2:** prefix = `ph2`, plan = `docs/IMPLEMENTATION_PLAN_PH2.md`, structure = `docs/STRUCTURE_PH2.md` (if exists, else use plan file only)
 
 ## Steps
 
@@ -10,17 +16,17 @@ Set up context for Stage $ARGUMENTS of Phase 1.
    - If it already exists, switch to it: `git checkout stage-$ARGUMENTS`
 
 3. **Read context docs:**
-   - `docs/STRUCTURE_PH1.md` — stage overview and build order
-   - `docs/IMPLEMENTATION_PLAN.md` — detailed run breakdown for Stage $ARGUMENTS
+   - The structure doc for this phase (see Phase Detection above)
+   - The implementation plan for this phase — detailed run breakdown for Stage $ARGUMENTS
    - `CLAUDE.md`, `backend/CLAUDE.md`, `frontend/CLAUDE.md` — conventions
    - `docs/ARCHITECTURE.md` §14 — type contracts
 
 4. **Derive progress from git history:**
-   - Run: `git log --oneline --grep='ph1-stage-$ARGUMENTS.'`
-   - Parse which runs (e.g., 1.1, 1.2, …) have been committed.
+   - Run: `git log --oneline --grep='<prefix>-stage-$ARGUMENTS.'` (using the phase prefix)
+   - Parse which runs (e.g., 8.1, 8.2, …) have been committed.
 
 5. **Output stage summary:**
-   - Stage number and goal (from STRUCTURE_PH1.md)
+   - Stage number, phase, and goal
    - List all runs with status: completed (from git) or pending
    - Identify the next run to implement
    - Hint: run `/next-run` to implement it
