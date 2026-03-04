@@ -5,9 +5,11 @@ from __future__ import annotations
 from collections.abc import AsyncGenerator
 from functools import lru_cache
 
+from fastapi import HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.config import Settings
+from app.services.neo4j_service import Neo4jService
 
 # Set during lifespan startup in main.py.
 _session_factory: async_sessionmaker[AsyncSession] | None = None
@@ -30,6 +32,24 @@ def get_settings() -> Settings:
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Yield an async SQLAlchemy session, closing it after use."""
     if _session_factory is None:
-        raise RuntimeError("Database not initialised — lifespan not started")
+        raise RuntimeError(
+            "Database not initialised — lifespan not started"
+        )
     async with _session_factory() as session:
         yield session
+
+
+def get_neo4j(request: Request) -> Neo4jService:
+    """Return the Neo4j service from app state.
+
+    Raises 503 if Neo4j is not connected (degraded mode).
+    """
+    neo4j_service: Neo4jService | None = getattr(
+        request.app.state, "neo4j_service", None
+    )
+    if neo4j_service is None or not neo4j_service.is_connected():
+        raise HTTPException(
+            status_code=503,
+            detail="Neo4j is not available (degraded mode)",
+        )
+    return neo4j_service
