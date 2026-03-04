@@ -1,32 +1,14 @@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SearchPanel } from "./SearchPanel";
 import { FilterPanel } from "./FilterPanel";
-
-// FindingsPanel and DatabaseOverview are implemented in Run 5.5
-function FindingsPanelPlaceholder() {
-  return (
-    <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-sm gap-2">
-      <span>No findings yet</span>
-    </div>
-  );
-}
-
-function DatabasePlaceholder() {
-  return (
-    <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-sm gap-2">
-      <span>Connect to Neo4j to view schema</span>
-    </div>
-  );
-}
+import { FindingsPanel } from "./FindingsPanel";
+import { DatabaseOverview } from "./DatabaseOverview";
 
 // ─── Navigator ────────────────────────────────────────────────────────────────
 
 export function Navigator() {
   return (
-    <Tabs
-      defaultValue="search"
-      className="flex flex-col h-full"
-    >
+    <Tabs defaultValue="search" className="flex flex-col h-full">
       <TabsList className="rounded-none border-b border-border bg-card w-full justify-start h-10 p-0 gap-0">
         <TabsTrigger
           value="search"
@@ -63,11 +45,11 @@ export function Navigator() {
       </TabsContent>
 
       <TabsContent value="findings" className="flex-1 mt-0 overflow-hidden">
-        <FindingsPanelPlaceholder />
+        <FindingsPanel />
       </TabsContent>
 
       <TabsContent value="database" className="flex-1 mt-0 overflow-hidden">
-        <DatabasePlaceholder />
+        <DatabaseOverview />
       </TabsContent>
     </Tabs>
   );
