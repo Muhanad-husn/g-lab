@@ -13,6 +13,9 @@ from app.config import Settings
 from app.core.logging import configure_logging, get_logger
 from app.dependencies import get_settings, set_session_factory
 from app.models.db import Base, create_engine, create_session_factory
+from app.routers import findings as findings_router
+from app.routers import sessions as sessions_router
+from app.services.action_log import ActionLogger
 from app.services.neo4j_service import Neo4jService
 from app.utils.exceptions import Neo4jConnectionError
 from app.utils.response import envelope
@@ -46,6 +49,12 @@ async def lifespan(app: FastAPI):  # type: ignore[no-untyped-def]
 
     app.state.engine = engine
     app.state.db_session_factory = session_factory
+
+    # --- Action logger ---
+    app.state.action_logger = ActionLogger(
+        data_dir=data_dir,
+        session_factory=session_factory,
+    )
 
     # --- Neo4j connection (degraded mode on failure) ---
     neo4j_service = Neo4jService()
@@ -97,6 +106,10 @@ def create_app() -> FastAPI:
         response.headers["X-Duration-Ms"] = str(duration_ms)
         return response
 
+    # --- Routers ---
+    app.include_router(sessions_router.router, prefix="/api/v1/sessions")
+    app.include_router(findings_router.router, prefix="/api/v1/sessions")
+
     # --- Health endpoint ---
     @app.get("/health")
     async def health(request: Request) -> dict[str, Any]:
@@ -104,9 +117,7 @@ def create_app() -> FastAPI:
             request.app.state, "neo4j_service", None
         )
         neo4j_status = (
-            "connected"
-            if neo4j_svc and neo4j_svc.is_connected()
-            else "disconnected"
+            "connected" if neo4j_svc and neo4j_svc.is_connected() else "disconnected"
         )
         return envelope(
             {

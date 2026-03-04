@@ -9,6 +9,7 @@ from fastapi import HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.config import Settings
+from app.services.action_log import ActionLogger
 from app.services.neo4j_service import Neo4jService
 
 # Set during lifespan startup in main.py.
@@ -32,11 +33,17 @@ def get_settings() -> Settings:
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Yield an async SQLAlchemy session, closing it after use."""
     if _session_factory is None:
-        raise RuntimeError(
-            "Database not initialised — lifespan not started"
-        )
+        raise RuntimeError("Database not initialised — lifespan not started")
     async with _session_factory() as session:
         yield session
+
+
+def get_action_logger(request: Request) -> ActionLogger:
+    """Return the ActionLogger from app state."""
+    logger: ActionLogger | None = getattr(request.app.state, "action_logger", None)
+    if logger is None:
+        raise RuntimeError("ActionLogger not initialised — lifespan not started")
+    return logger
 
 
 def get_neo4j(request: Request) -> Neo4jService:
