@@ -16,6 +16,7 @@ dependencies = [
     "pydantic-settings>=2.6,<3",
     "alembic>=1.14,<2",
     "structlog>=24.4,<26",
+    "python-multipart>=0.0.9,<1",
 ]
 
 [project.optional-dependencies]
