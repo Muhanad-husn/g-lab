@@ -65,6 +65,12 @@ export interface SessionCreate {
   name: string;
 }
 
+export interface SessionUpdate {
+  name?: string | null;
+  canvas_state?: CanvasState | null;
+  config?: Record<string, unknown> | null;
+}
+
 export interface FindingResponse {
   id: string;
   session_id: string;
