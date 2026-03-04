@@ -55,11 +55,20 @@ async def update_finding(
     session_id: str,
     finding_id: str,
     body: FindingUpdate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
+    action_logger: ActionLogger = Depends(get_action_logger),
 ) -> dict[str, Any]:
     finding = await _svc.update(db, session_id, finding_id, body)
     if finding is None:
         raise HTTPException(status_code=404, detail="Finding not found")
+    background_tasks.add_task(
+        action_logger.log,
+        session_id=session_id,
+        action_type=ActionType.FINDING_UPDATE,
+        actor="user",
+        payload={"finding_id": finding_id},
+    )
     return envelope(finding.model_dump())
 
 
@@ -67,9 +76,18 @@ async def update_finding(
 async def delete_finding(
     session_id: str,
     finding_id: str,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
+    action_logger: ActionLogger = Depends(get_action_logger),
 ) -> dict[str, Any]:
     deleted = await _svc.delete(db, session_id, finding_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Finding not found")
+    background_tasks.add_task(
+        action_logger.log,
+        session_id=session_id,
+        action_type=ActionType.FINDING_DELETE,
+        actor="user",
+        payload={"finding_id": finding_id},
+    )
     return envelope({"deleted": finding_id})

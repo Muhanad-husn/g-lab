@@ -8,12 +8,14 @@ import { ToastContainer } from "@/components/ui/ToastContainer";
 import { DevPanel } from "@/components/dev/DevPanel";
 import { useSessionRestore } from "@/hooks/useSessionRestore";
 import { useHealthPolling } from "@/hooks/useHealthPolling";
+import { useReadOnlyMode } from "@/hooks/useReadOnlyMode";
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 export default function App() {
   useSessionRestore();
   useHealthPolling();
+  useReadOnlyMode();
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground overflow-hidden">

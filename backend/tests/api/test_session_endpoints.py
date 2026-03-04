@@ -148,22 +148,24 @@ async def test_reset_not_found(client: AsyncClient) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Stub endpoints
+# Export / import (smoke tests — full coverage in test_export_endpoints.py)
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_export_returns_501(client: AsyncClient) -> None:
+async def test_export_returns_zip(client: AsyncClient) -> None:
     create = await client.post("/api/v1/sessions", json={"name": "Export Me"})
     session_id = create.json()["data"]["id"]
     resp = await client.post(f"/api/v1/sessions/{session_id}/export")
-    assert resp.status_code == 501
+    assert resp.status_code == 200
+    assert "application/zip" in resp.headers.get("content-type", "")
 
 
 @pytest.mark.asyncio
-async def test_import_returns_501(client: AsyncClient) -> None:
+async def test_import_requires_file(client: AsyncClient) -> None:
+    # POST /import with no file body → 422 Unprocessable Entity
     resp = await client.post("/api/v1/sessions/import")
-    assert resp.status_code == 501
+    assert resp.status_code == 422
 
 
 # ---------------------------------------------------------------------------

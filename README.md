@@ -114,7 +114,7 @@ Key constraints:
 | Phase | Description                                           | Status      |
 | ----- | ----------------------------------------------------- | ----------- |
 | 0     | Project bootstrap — tooling, logging, cache           | Complete    |
-| 1     | Core workbench — canvas, sessions, Neo4j proxy        | In progress |
+| 1     | Core workbench — canvas, sessions, Neo4j proxy        | Complete    |
 | 2     | AI Copilot — LLM-assisted query and summarisation     | Planned     |
 | 3     | Document store — ChromaDB vector search, findings     | Planned     |
 

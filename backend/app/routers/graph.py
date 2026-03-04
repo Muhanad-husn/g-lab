@@ -19,10 +19,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import JSONResponse
 
-from app.dependencies import get_neo4j
+from app.dependencies import get_action_logger, get_neo4j
+from app.models.enums import ActionType
 from app.models.schemas import (
     ExpandRequest,
     ExpandResponse,
@@ -35,6 +36,7 @@ from app.models.schemas import (
     SearchRequest,
     SearchResponse,
 )
+from app.services.action_log import ActionLogger
 from app.services.guardrails import GuardrailService
 from app.services.neo4j_service import Neo4jService
 from app.utils.exceptions import CypherValidationError
@@ -103,7 +105,9 @@ async def get_label_samples(
 @router.post("/search")
 async def search_nodes(
     body: SearchRequest,
+    background_tasks: BackgroundTasks,
     neo4j: Neo4jService = Depends(get_neo4j),
+    action_logger: ActionLogger = Depends(get_action_logger),
 ) -> dict[str, Any]:
     try:
         raw_nodes = await neo4j.search(
@@ -114,6 +118,15 @@ async def search_nodes(
     except TimeoutError as exc:
         raise HTTPException(status_code=504, detail="Search query timed out") from exc
     nodes = [GraphNode(**n) for n in raw_nodes]
+    if body.session_id:
+        background_tasks.add_task(
+            action_logger.log,
+            session_id=body.session_id,
+            action_type=ActionType.NODE_SEARCH,
+            actor="user",
+            payload={"query": body.query, "labels": body.labels},
+            result_summary={"result_count": len(nodes)},
+        )
     return envelope(SearchResponse(nodes=nodes).model_dump())
 
 
@@ -125,7 +138,9 @@ async def search_nodes(
 @router.post("/expand")
 async def expand_nodes(
     body: ExpandRequest,
+    background_tasks: BackgroundTasks,
     neo4j: Neo4jService = Depends(get_neo4j),
+    action_logger: ActionLogger = Depends(get_action_logger),
 ) -> Any:
     # Guardrail pre-check: canvas capacity
     expansion_result = _guardrails.check_expansion(
@@ -162,6 +177,16 @@ async def expand_nodes(
 
     nodes = [GraphNode(**n) for n in raw_nodes]
     edges = [GraphEdge(**e) for e in raw_edges]
+    if body.session_id:
+        background_tasks.add_task(
+            action_logger.log,
+            session_id=body.session_id,
+            action_type=ActionType.NODE_EXPAND,
+            actor="user",
+            payload={"node_ids": body.node_ids, "hops": effective_hops},
+            result_summary={"node_count": len(nodes), "edge_count": len(edges)},
+            guardrail_warnings=warnings if warnings else None,
+        )
     return envelope(
         ExpandResponse(nodes=nodes, edges=edges).model_dump(),
         warnings=warnings,
@@ -176,7 +201,9 @@ async def expand_nodes(
 @router.post("/paths")
 async def find_paths(
     body: PathRequest,
+    background_tasks: BackgroundTasks,
     neo4j: Neo4jService = Depends(get_neo4j),
+    action_logger: ActionLogger = Depends(get_action_logger),
 ) -> dict[str, Any]:
     # Guardrail pre-check: hop count
     hops_result = _guardrails.check_hops(requested=body.max_hops)
@@ -196,6 +223,21 @@ async def find_paths(
 
     nodes = [GraphNode(**n) for n in raw_nodes]
     edges = [GraphEdge(**e) for e in raw_edges]
+    if body.session_id:
+        background_tasks.add_task(
+            action_logger.log,
+            session_id=body.session_id,
+            action_type=ActionType.PATH_DISCOVERY,
+            actor="user",
+            payload={
+                "source_id": body.source_id,
+                "target_id": body.target_id,
+                "max_hops": effective_hops,
+                "mode": body.mode,
+            },
+            result_summary={"path_count": len(raw_paths), "node_count": len(nodes)},
+            guardrail_warnings=hops_result.warnings if hops_result.warnings else None,
+        )
     return envelope(
         PathResponse(
             paths=raw_paths,
@@ -214,7 +256,9 @@ async def find_paths(
 @router.post("/query")
 async def raw_query(
     body: RawQueryRequest,
+    background_tasks: BackgroundTasks,
     neo4j: Neo4jService = Depends(get_neo4j),
+    action_logger: ActionLogger = Depends(get_action_logger),
 ) -> dict[str, Any]:
     try:
         results = await neo4j.execute_raw(cypher=body.query)
@@ -222,4 +266,13 @@ async def raw_query(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except TimeoutError as exc:
         raise HTTPException(status_code=504, detail="Query timed out") from exc
+    if body.session_id:
+        background_tasks.add_task(
+            action_logger.log,
+            session_id=body.session_id,
+            action_type=ActionType.RAW_QUERY,
+            actor="user",
+            payload={"query": body.query},
+            result_summary={"row_count": len(results)},
+        )
     return envelope({"results": results})

@@ -1,4 +1,5 @@
 import * as client from "./client";
+import { API_BASE } from "@/lib/constants";
 import type {
   SessionCreate,
   SessionResponse,
@@ -46,4 +47,42 @@ export async function resetSession(id: string): Promise<SessionResponse> {
     `${BASE}/${id}/reset`,
   );
   return data;
+}
+
+/**
+ * Exports a session as a .g-lab-session ZIP archive.
+ * Uses raw fetch because the response is binary, not JSON.
+ */
+export async function exportSession(id: string): Promise<Blob> {
+  const res = await fetch(`${API_BASE}${BASE}/${id}/export`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const json = (await res.json().catch(() => ({}))) as {
+      error?: { message?: string };
+    };
+    throw new Error(json?.error?.message ?? "Export failed");
+  }
+  return res.blob();
+}
+
+/**
+ * Imports a .g-lab-session ZIP file and returns the created session.
+ * Uses raw fetch with FormData because the request body is a file upload.
+ */
+export async function importSession(file: File): Promise<SessionResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(`${API_BASE}${BASE}/import`, {
+    method: "POST",
+    body: formData,
+  });
+  if (!res.ok) {
+    const json = (await res.json().catch(() => ({}))) as {
+      error?: { message?: string };
+    };
+    throw new Error(json?.error?.message ?? "Import failed");
+  }
+  const json = (await res.json()) as { data: SessionResponse };
+  return json.data;
 }

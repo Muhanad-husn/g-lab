@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type cytoscape from "cytoscape";
 import { createCytoscapeInstance } from "@/lib/cytoscape";
+import { cytoscapeRef } from "@/lib/cytoscapeRef";
 import { CY_STYLESHEET } from "./cytoscapeStyles";
 import { useCanvasSync } from "./useCanvasSync";
 
@@ -18,6 +19,7 @@ export function CytoscapeCanvas() {
 
     const instance = createCytoscapeInstance(containerRef.current);
     instance.style(CY_STYLESHEET);
+    cytoscapeRef.current = instance;
     setCy(instance);
 
     // Notify Cytoscape when the panel is resized (react-resizable-panels)
@@ -29,6 +31,7 @@ export function CytoscapeCanvas() {
     return () => {
       observer.disconnect();
       instance.destroy();
+      cytoscapeRef.current = null;
       setCy(null);
     };
   }, []);
