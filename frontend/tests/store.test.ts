@@ -140,6 +140,83 @@ describe("uiSlice — banners", () => {
   });
 });
 
+// ─── graphSlice — edge + position actions ────────────────────────────────────
+
+describe("graphSlice — edges and positions", () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let store: ReturnType<typeof createStore<GraphSlice>>;
+
+  beforeEach(() => {
+    store = createStore<GraphSlice>()((...a: any[]) => createGraphSlice(...a));
+  });
+
+  it("addEdges deduplicates by id", () => {
+    const edge = { id: "e1", type: "KNOWS", source: "a", target: "b", properties: {} };
+    store.getState().addEdges([edge]);
+    store.getState().addEdges([edge, { id: "e2", type: "OWNS", source: "b", target: "c", properties: {} }]);
+
+    const edges = store.getState().edges;
+    expect(edges).toHaveLength(2);
+    expect(edges.map((e) => e.id)).toEqual(["e1", "e2"]);
+  });
+
+  it("removeNode also removes connected edges", () => {
+    store.getState().addNodes([makeNode("a"), makeNode("b")]);
+    store.getState().addEdges([
+      { id: "e1", type: "KNOWS", source: "a", target: "b", properties: {} },
+      { id: "e2", type: "OWNS", source: "b", target: "a", properties: {} },
+    ]);
+    store.getState().removeNode("a");
+
+    expect(store.getState().nodes).toHaveLength(1);
+    expect(store.getState().edges).toHaveLength(0);
+  });
+
+  it("setPositions merges without replacing existing entries", () => {
+    store.getState().setPositions({ a: { x: 10, y: 20 } });
+    store.getState().setPositions({ b: { x: 30, y: 40 } });
+
+    const pos = store.getState().positions;
+    expect(pos["a"]).toEqual({ x: 10, y: 20 });
+    expect(pos["b"]).toEqual({ x: 30, y: 40 });
+  });
+
+  it("setPositions overwrites existing position for the same id", () => {
+    store.getState().setPositions({ a: { x: 10, y: 20 } });
+    store.getState().setPositions({ a: { x: 99, y: 99 } });
+
+    expect(store.getState().positions["a"]).toEqual({ x: 99, y: 99 });
+  });
+});
+
+// ─── uiSlice — selection ──────────────────────────────────────────────────────
+
+describe("uiSlice — selection", () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let store: ReturnType<typeof createStore<UiSlice>>;
+
+  beforeEach(() => {
+    store = createStore<UiSlice>()((...a: any[]) => createUiSlice(...a));
+  });
+
+  it("setSelectedIds updates the selection", () => {
+    store.getState().setSelectedIds(["n1", "n2"]);
+    expect(store.getState().selectedIds).toEqual(["n1", "n2"]);
+  });
+
+  it("clearSelection empties selectedIds", () => {
+    store.getState().setSelectedIds(["n1"]);
+    store.getState().clearSelection();
+    expect(store.getState().selectedIds).toHaveLength(0);
+  });
+
+  it("setSelectedIds replaces previous selection", () => {
+    store.getState().setSelectedIds(["n1"]);
+    store.getState().setSelectedIds(["n2", "n3"]);
+    expect(store.getState().selectedIds).toEqual(["n2", "n3"]);
+  });
+});
+
 // ─── sessionSlice ─────────────────────────────────────────────────────────────
 
 describe("sessionSlice", () => {
