@@ -11,7 +11,8 @@ handles:
 from __future__ import annotations
 
 import asyncio
-from typing import Any, AsyncGenerator
+from collections.abc import AsyncGenerator
+from typing import Any
 
 from app.core.logging import get_logger
 from app.models.schemas import CopilotQueryRequest, PresetConfig, RouterIntent
@@ -81,7 +82,10 @@ class CopilotPipeline:
             logger.warning("copilot_semaphore_busy", session_id=session_id)
             yield SSEEvent(
                 event="error",
-                data={"code": "busy", "message": "Copilot is already processing a request"},
+                data={
+                    "code": "busy",
+                    "message": "Copilot is already processing a request",
+                },
             )
             return
 
@@ -123,7 +127,9 @@ class CopilotPipeline:
         budgets = preset_config.tokenBudgets
 
         router_model = models.get("router", "anthropic/claude-3-haiku-20240307")
-        retrieval_model = models.get("graphRetrieval", "anthropic/claude-3-haiku-20240307")
+        retrieval_model = models.get(
+            "graphRetrieval", "anthropic/claude-3-haiku-20240307"
+        )
         synth_model = models.get("synthesiser", "anthropic/claude-3-haiku-20240307")
 
         router_tokens = budgets.get("router", 256)

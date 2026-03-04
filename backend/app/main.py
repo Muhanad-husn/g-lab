@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import time
 from contextlib import asynccontextmanager
 from typing import Any
@@ -14,6 +15,7 @@ from app.core.logging import configure_logging, get_logger
 from app.dependencies import get_settings, set_session_factory
 from app.models.db import Base, create_engine, create_session_factory
 from app.routers import config_presets as config_presets_router
+from app.routers import copilot as copilot_router
 from app.routers import findings as findings_router
 from app.routers import graph as graph_router
 from app.routers import sessions as sessions_router
@@ -65,6 +67,10 @@ async def lifespan(app: FastAPI):  # type: ignore[no-untyped-def]
     async with session_factory() as db:
         await preset_svc.seed_system_presets(db)
     logger.info("system_presets_seeded")
+
+    # --- Copilot semaphore (max 1 concurrent request) ---
+    app.state.copilot_semaphore = asyncio.Semaphore(1)
+    logger.info("copilot_semaphore_ready")
 
     # --- OpenRouter client (optional — requires API key) ---
     settings_obj: Settings = get_settings()
@@ -138,6 +144,7 @@ def create_app() -> FastAPI:
     app.include_router(findings_router.router, prefix="/api/v1/sessions")
     app.include_router(graph_router.router, prefix="/api/v1/graph")
     app.include_router(config_presets_router.router, prefix="/api/v1/config")
+    app.include_router(copilot_router.router, prefix="/api/v1/copilot")
 
     # --- Health endpoint ---
     @app.get("/health")

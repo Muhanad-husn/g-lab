@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncGenerator
 from functools import lru_cache
 
@@ -50,6 +51,16 @@ def get_action_logger(request: Request) -> ActionLogger:
 def get_openrouter(request: Request) -> OpenRouterClient | None:
     """Return the OpenRouterClient from app state, or None if not configured."""
     return getattr(request.app.state, "openrouter_client", None)
+
+
+def get_copilot_semaphore(request: Request) -> asyncio.Semaphore:
+    """Return the copilot concurrency semaphore from app state."""
+    semaphore: asyncio.Semaphore | None = getattr(
+        request.app.state, "copilot_semaphore", None
+    )
+    if semaphore is None:
+        raise RuntimeError("Copilot semaphore not initialised — lifespan not started")
+    return semaphore
 
 
 def get_neo4j(request: Request) -> Neo4jService:
