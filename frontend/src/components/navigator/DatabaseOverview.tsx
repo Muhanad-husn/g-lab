@@ -101,6 +101,36 @@ function SampleTable({ rows }: { rows: Record<string, unknown>[] }) {
   );
 }
 
+// ─── Sample row flatteners ────────────────────────────────────────────────────
+
+function flattenNodeRows(raw: Record<string, unknown>[]): Record<string, unknown>[] {
+  return raw.map((node) => {
+    const props = (node.properties ?? {}) as Record<string, unknown>;
+    const name = props["_primary_value"] ?? node.id;
+    const labels = Array.isArray(node.labels) ? node.labels.join(", ") : String(node.labels);
+    const extra: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(props)) {
+      if (!k.startsWith("_")) extra[k] = v;
+    }
+    return { name, labels, ...extra };
+  });
+}
+
+function flattenRelRows(raw: Record<string, unknown>[]): Record<string, unknown>[] {
+  return raw.map((row) => {
+    const src = row.source as Record<string, unknown> | undefined;
+    const rel = row.relationship as Record<string, unknown> | undefined;
+    const tgt = row.target as Record<string, unknown> | undefined;
+    const srcProps = (src?.properties ?? {}) as Record<string, unknown>;
+    const tgtProps = (tgt?.properties ?? {}) as Record<string, unknown>;
+    return {
+      source: String(srcProps["_primary_value"] ?? src?.id ?? ""),
+      type: String(rel?.type ?? ""),
+      target: String(tgtProps["_primary_value"] ?? tgt?.id ?? ""),
+    };
+  });
+}
+
 // ─── Expandable label row ─────────────────────────────────────────────────────
 
 interface LabelRowProps {
@@ -121,7 +151,8 @@ function LabelRow({ name, count, isRelType = false }: LabelRowProps) {
       setLoading(true);
       try {
         const data = isRelType ? await getRelSamples(name) : await getSamples(name);
-        setSamples(data);
+        const rows = isRelType ? flattenRelRows(data) : flattenNodeRows(data);
+        setSamples(rows);
       } catch {
         setSamples([]);
       } finally {

@@ -16,6 +16,7 @@ from neo4j.exceptions import (
     ServiceUnavailable,
     SessionExpired,
 )
+from neo4j.time import Date, DateTime, Duration, Time
 
 from app.core.logging import get_logger
 from app.utils.cypher import CypherSanitiser
@@ -481,12 +482,29 @@ async def _run_query(
     return [record async for record in result]
 
 
+def _sanitize_value(v: Any) -> Any:
+    """Convert neo4j native types to JSON-serializable primitives."""
+    if isinstance(v, (DateTime, Date, Time)):
+        return v.iso_format()
+    if isinstance(v, Duration):
+        return str(v)
+    if isinstance(v, list):
+        return [_sanitize_value(i) for i in v]
+    if isinstance(v, dict):
+        return {k: _sanitize_value(val) for k, val in v.items()}
+    return v
+
+
+def _sanitize_props(props: Any) -> dict[str, Any]:
+    return {k: _sanitize_value(v) for k, v in dict(props).items()}
+
+
 def _record_to_node(node: Any) -> dict[str, Any]:
     """Convert a neo4j Node to our GraphNode dict."""
     return {
         "id": node.element_id,
         "labels": list(node.labels),
-        "properties": dict(node),
+        "properties": _sanitize_props(node),
     }
 
 
@@ -497,7 +515,7 @@ def _record_to_edge(rel: Any) -> dict[str, Any]:
         "type": rel.type,
         "source": rel.start_node.element_id,
         "target": rel.end_node.element_id,
-        "properties": dict(rel),
+        "properties": _sanitize_props(rel),
     }
 
 

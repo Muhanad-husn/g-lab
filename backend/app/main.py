@@ -114,6 +114,7 @@ def create_app() -> FastAPI:
 
     # --- Health endpoint ---
     @app.get("/health")
+    @app.get("/api/v1/health")
     async def health(request: Request) -> dict[str, Any]:
         neo4j_svc: Neo4jService | None = getattr(
             request.app.state, "neo4j_service", None
