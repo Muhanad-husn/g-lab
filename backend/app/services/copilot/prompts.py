@@ -86,23 +86,23 @@ Format each event as:
 
 Text chunks use:
   event: text_chunk
-  data: {"text": "..."}
+  data: {{"text": "..."}}
 
 Evidence uses:
   event: evidence
-  data: {"sources": [{"type": "graph_path", "id": "...", "content": "..."}]}
+  data: {{"sources": [{{"type": "graph_path", "id": "...", "content": "..."}}]}}
 
 Graph delta uses:
   event: graph_delta
-  data: {"add_nodes": [...], "add_edges": [...]}
+  data: {{"add_nodes": [...], "add_edges": [...]}}
 
 Confidence uses:
   event: confidence
-  data: {"score": 0.85, "band": "high"}
+  data: {{"score": 0.85, "band": "high"}}
 
 Done uses:
   event: done
-  data: {}
+  data: {{}}
 
 Scoring guide:
   high   (0.75–1.0) — direct evidence found, answer is certain.
