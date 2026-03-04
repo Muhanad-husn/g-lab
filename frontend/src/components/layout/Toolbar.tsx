@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Download, Pencil, Upload } from "lucide-react";
+import { Download, Pencil, Settings, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -10,8 +10,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { createSession, exportSession, importSession, updateSession } from "@/api/sessions";
+import {
+  createPreset,
+  deletePreset,
+} from "@/api/config";
 import { useStore } from "@/store";
 import { PRESETS, type PresetName } from "@/lib/constants";
+import type { PresetConfig, PresetResponse } from "@/lib/types";
 
 // ─── Neo4j status indicator ───────────────────────────────────────────────────
 
@@ -46,6 +51,35 @@ function StatusDot() {
   );
 }
 
+// ─── Copilot status indicator ─────────────────────────────────────────────────
+
+function CopilotStatusDot() {
+  const status = useStore((s) => s.copilotStatus);
+
+  const color =
+    status === "ready"
+      ? "bg-blue-400"
+      : status === "unconfigured"
+        ? "bg-muted-foreground"
+        : "bg-muted-foreground/50";
+
+  const label =
+    status === "ready"
+      ? "Copilot ready"
+      : status === "unconfigured"
+        ? "Copilot unconfigured"
+        : "Copilot status unknown";
+
+  return (
+    <span className="flex items-center gap-1.5" title={label}>
+      <span className={`h-2 w-2 rounded-full ${color}`} />
+      <span className="text-xs text-muted-foreground hidden lg:inline">
+        {label}
+      </span>
+    </span>
+  );
+}
+
 // ─── Preset selector ──────────────────────────────────────────────────────────
 
 function PresetSelector() {
@@ -64,6 +98,326 @@ function PresetSelector() {
         </option>
       ))}
     </select>
+  );
+}
+
+// ─── Copilot settings dialog ──────────────────────────────────────────────────
+
+interface CopilotSettingsDialogProps {
+  open: boolean;
+  onClose: () => void;
+}
+
+function CopilotSettingsDialog({ open, onClose }: CopilotSettingsDialogProps) {
+  const advancedMode = useStore((s) => s.advancedMode);
+  const setAdvancedMode = useStore((s) => s.setAdvancedMode);
+  const modelAssignments = useStore((s) => s.modelAssignments);
+  const setModelAssignments = useStore((s) => s.setModelAssignments);
+
+  const [router, setRouter] = useState(modelAssignments.router);
+  const [graphRetrieval, setGraphRetrieval] = useState(modelAssignments.graphRetrieval);
+  const [synthesiser, setSynthesiser] = useState(modelAssignments.synthesiser);
+
+  function handleSave() {
+    setModelAssignments({ router, graphRetrieval, synthesiser });
+    onClose();
+  }
+
+  function handleOpenChange(isOpen: boolean) {
+    if (!isOpen) {
+      // Reset local state to current store values on cancel
+      setRouter(modelAssignments.router);
+      setGraphRetrieval(modelAssignments.graphRetrieval);
+      setSynthesiser(modelAssignments.synthesiser);
+      onClose();
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Copilot Settings</DialogTitle>
+        </DialogHeader>
+
+        <div className="flex flex-col gap-4 py-2">
+          {/* Advanced Mode toggle */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Advanced Mode</p>
+              <p className="text-xs text-muted-foreground">
+                Configure individual model assignments per pipeline stage
+              </p>
+            </div>
+            <button
+              onClick={() => setAdvancedMode(!advancedMode)}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
+                advancedMode ? "bg-primary" : "bg-input"
+              }`}
+              role="switch"
+              aria-checked={advancedMode}
+            >
+              <span
+                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                  advancedMode ? "translate-x-4.5" : "translate-x-0.5"
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Model assignments — shown when advanced mode is on */}
+          {advancedMode && (
+            <div className="flex flex-col gap-3 border border-border rounded-md p-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Model Assignments
+              </p>
+
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-foreground">Router</span>
+                <Input
+                  value={router}
+                  onChange={(e) => setRouter(e.target.value)}
+                  placeholder="anthropic/claude-3-haiku-20240307"
+                  className="h-7 text-xs font-mono"
+                />
+              </label>
+
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-foreground">Graph Retrieval</span>
+                <Input
+                  value={graphRetrieval}
+                  onChange={(e) => setGraphRetrieval(e.target.value)}
+                  placeholder="anthropic/claude-3-5-sonnet-20241022"
+                  className="h-7 text-xs font-mono"
+                />
+              </label>
+
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-foreground">Synthesiser</span>
+                <Input
+                  value={synthesiser}
+                  onChange={(e) => setSynthesiser(e.target.value)}
+                  placeholder="anthropic/claude-sonnet-4-20250514"
+                  className="h-7 text-xs font-mono"
+                />
+              </label>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={() => handleOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button size="sm" onClick={handleSave}>
+            Save
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Preset manager dialog ────────────────────────────────────────────────────
+
+const DEFAULT_PRESET_CONFIG: PresetConfig = {
+  hops: 2,
+  expansionLimit: 25,
+  docTopK: 5,
+  docRerankerK: 3,
+  models: {
+    router: "anthropic/claude-3-haiku-20240307",
+    graphRetrieval: "anthropic/claude-3-5-sonnet-20241022",
+    synthesiser: "anthropic/claude-sonnet-4-20250514",
+  },
+  tokenBudgets: {
+    router: 500,
+    graphRetrieval: 2000,
+    synthesiser: 4000,
+  },
+  advancedMode: false,
+};
+
+interface PresetManagerDialogProps {
+  open: boolean;
+  onClose: () => void;
+}
+
+function PresetManagerDialog({ open, onClose }: PresetManagerDialogProps) {
+  const presets = useStore((s) => s.presets);
+  const upsertPreset = useStore((s) => s.upsertPreset);
+  const removePreset = useStore((s) => s.removePreset);
+  const addToast = useStore((s) => s.addToast);
+
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newHops, setNewHops] = useState("2");
+  const [newLimit, setNewLimit] = useState("25");
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    const name = newName.trim();
+    if (!name) return;
+
+    setSaving(true);
+    try {
+      const created = await createPreset({
+        name,
+        config: {
+          ...DEFAULT_PRESET_CONFIG,
+          hops: parseInt(newHops, 10) || 2,
+          expansionLimit: parseInt(newLimit, 10) || 25,
+        },
+      });
+      upsertPreset(created);
+      setNewName("");
+      setNewHops("2");
+      setNewLimit("25");
+      setCreating(false);
+      addToast({ level: "success", title: "Preset created", duration: 3000 });
+    } catch (err) {
+      addToast({
+        level: "error",
+        title: "Failed to create preset",
+        message: err instanceof Error ? err.message : "Unknown error",
+        duration: 5000,
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(preset: PresetResponse) {
+    setDeletingId(preset.id);
+    try {
+      await deletePreset(preset.id);
+      removePreset(preset.id);
+      addToast({ level: "success", title: `"${preset.name}" deleted`, duration: 3000 });
+    } catch (err) {
+      addToast({
+        level: "error",
+        title: "Failed to delete preset",
+        message: err instanceof Error ? err.message : "Unknown error",
+        duration: 5000,
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Manage Presets</DialogTitle>
+        </DialogHeader>
+
+        <div className="flex flex-col gap-2 max-h-72 overflow-y-auto py-1">
+          {presets.length === 0 && (
+            <p className="text-xs text-muted-foreground text-center py-4">
+              No presets loaded. Copilot may be unconfigured.
+            </p>
+          )}
+          {presets.map((preset) => (
+            <div
+              key={preset.id}
+              className="flex items-center justify-between px-3 py-2 rounded-md border border-border"
+            >
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-foreground truncate">{preset.name}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {preset.is_system ? "System" : "User"} · hops:{" "}
+                  {preset.config.hops} · limit: {preset.config.expansionLimit}
+                </p>
+              </div>
+              {!preset.is_system && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-[10px] text-destructive border-destructive/30 hover:bg-destructive/10 ml-2 shrink-0"
+                  onClick={() => void handleDelete(preset)}
+                  disabled={deletingId === preset.id}
+                >
+                  {deletingId === preset.id ? "…" : "Delete"}
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* New preset form */}
+        {creating ? (
+          <form onSubmit={(e) => void handleCreate(e)} className="flex flex-col gap-2 border-t border-border pt-3">
+            <p className="text-xs font-semibold text-foreground">New Preset</p>
+            <Input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Preset name…"
+              className="h-7 text-xs"
+              required
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <label className="flex-1 flex flex-col gap-1">
+                <span className="text-[10px] text-muted-foreground">Hops</span>
+                <Input
+                  type="number"
+                  min={1}
+                  max={5}
+                  value={newHops}
+                  onChange={(e) => setNewHops(e.target.value)}
+                  className="h-7 text-xs"
+                />
+              </label>
+              <label className="flex-1 flex flex-col gap-1">
+                <span className="text-[10px] text-muted-foreground">Expansion limit</span>
+                <Input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={newLimit}
+                  onChange={(e) => setNewLimit(e.target.value)}
+                  className="h-7 text-xs"
+                />
+              </label>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setCreating(false)}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" disabled={saving || !newName.trim()}>
+                {saving ? "Creating…" : "Create"}
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <div className="border-t border-border pt-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full text-xs h-7"
+              onClick={() => setCreating(true)}
+            >
+              + New Preset
+            </Button>
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={onClose}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -237,7 +591,11 @@ export function Toolbar() {
   const setFindings = useStore((s) => s.setFindings);
   const clearGraph = useStore((s) => s.clearGraph);
   const addToast = useStore((s) => s.addToast);
+  const advancedMode = useStore((s) => s.advancedMode);
+
   const [newSessionOpen, setNewSessionOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [presetsOpen, setPresetsOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -310,6 +668,28 @@ export function Toolbar() {
         <div className="flex items-center gap-2 shrink-0">
           <PresetSelector />
 
+          {/* Preset manager */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs"
+            onClick={() => setPresetsOpen(true)}
+            title="Manage investigation presets"
+          >
+            Presets
+          </Button>
+
+          {/* Copilot settings */}
+          <Button
+            variant={advancedMode ? "default" : "outline"}
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => setSettingsOpen(true)}
+            title={advancedMode ? "Copilot settings (advanced mode on)" : "Copilot settings"}
+          >
+            <Settings className="h-3.5 w-3.5" />
+          </Button>
+
           {/* Export */}
           <Button
             variant="outline"
@@ -354,12 +734,21 @@ export function Toolbar() {
           </Button>
 
           <StatusDot />
+          <CopilotStatusDot />
         </div>
       </header>
 
       <NewSessionDialog
         open={newSessionOpen}
         onClose={() => setNewSessionOpen(false)}
+      />
+      <CopilotSettingsDialog
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+      />
+      <PresetManagerDialog
+        open={presetsOpen}
+        onClose={() => setPresetsOpen(false)}
       />
     </>
   );

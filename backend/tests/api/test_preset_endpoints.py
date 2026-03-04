@@ -5,14 +5,18 @@ from __future__ import annotations
 from collections.abc import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock
 
+import tempfile
+from pathlib import Path
+
 import pytest
 from fastapi import FastAPI, Request
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.dependencies import get_db, get_openrouter
+from app.dependencies import get_action_logger, get_db, get_openrouter
 from app.models.db import Base
 from app.routers import config_presets as config_presets_router
+from app.services.action_log import ActionLogger
 from app.services.copilot.openrouter import OpenRouterClient
 from app.services.preset_service import PresetService
 
@@ -44,16 +48,24 @@ async def preset_client() -> AsyncGenerator[AsyncClient, None]:
     def override_get_openrouter(_request: Request) -> OpenRouterClient | None:
         return None
 
-    test_app = FastAPI()
-    test_app.include_router(config_presets_router.router, prefix="/api/v1/config")
-    test_app.dependency_overrides[get_db] = override_get_db
-    test_app.dependency_overrides[get_openrouter] = override_get_openrouter
+    with tempfile.TemporaryDirectory(prefix="glab_preset_test_") as tmp:
+        data_dir = Path(tmp)
+        action_logger = ActionLogger(data_dir=data_dir, session_factory=factory)
 
-    async with AsyncClient(
-        transport=ASGITransport(app=test_app),
-        base_url="http://test",
-    ) as c:
-        yield c
+        def override_get_action_logger(_request: Request) -> ActionLogger:
+            return action_logger
+
+        test_app = FastAPI()
+        test_app.include_router(config_presets_router.router, prefix="/api/v1/config")
+        test_app.dependency_overrides[get_db] = override_get_db
+        test_app.dependency_overrides[get_openrouter] = override_get_openrouter
+        test_app.dependency_overrides[get_action_logger] = override_get_action_logger
+
+        async with AsyncClient(
+            transport=ASGITransport(app=test_app),
+            base_url="http://test",
+        ) as c:
+            yield c
 
     await engine.dispose()
 
@@ -90,16 +102,24 @@ async def preset_client_with_openrouter() -> (
     def override_get_openrouter(_request: Request) -> OpenRouterClient | None:
         return mock_or  # type: ignore[return-value]
 
-    test_app = FastAPI()
-    test_app.include_router(config_presets_router.router, prefix="/api/v1/config")
-    test_app.dependency_overrides[get_db] = override_get_db
-    test_app.dependency_overrides[get_openrouter] = override_get_openrouter
+    with tempfile.TemporaryDirectory(prefix="glab_preset_or_test_") as tmp:
+        data_dir = Path(tmp)
+        action_logger = ActionLogger(data_dir=data_dir, session_factory=factory)
 
-    async with AsyncClient(
-        transport=ASGITransport(app=test_app),
-        base_url="http://test",
-    ) as c:
-        yield c, mock_or
+        def override_get_action_logger(_request: Request) -> ActionLogger:
+            return action_logger
+
+        test_app = FastAPI()
+        test_app.include_router(config_presets_router.router, prefix="/api/v1/config")
+        test_app.dependency_overrides[get_db] = override_get_db
+        test_app.dependency_overrides[get_openrouter] = override_get_openrouter
+        test_app.dependency_overrides[get_action_logger] = override_get_action_logger
+
+        async with AsyncClient(
+            transport=ASGITransport(app=test_app),
+            base_url="http://test",
+        ) as c:
+            yield c, mock_or
 
     await engine.dispose()
 

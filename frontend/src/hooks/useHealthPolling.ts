@@ -16,7 +16,7 @@
 import { useCallback, useEffect, useRef } from "react";
 
 import { useStore } from "@/store";
-import type { Neo4jConnectionStatus } from "@/store/monitoringSlice";
+import type { CopilotStatus, Neo4jConnectionStatus } from "@/store/monitoringSlice";
 
 const POLL_INTERVAL_MS = 30_000;
 
@@ -24,11 +24,13 @@ interface HealthResponse {
   data: {
     status: string;
     neo4j: Neo4jConnectionStatus;
+    copilot?: CopilotStatus;
   };
 }
 
 export function useHealthPolling(): void {
   const setNeo4jStatus = useStore((s) => s.setNeo4jStatus);
+  const setCopilotStatus = useStore((s) => s.setCopilotStatus);
   const addToast = useStore((s) => s.addToast);
   const prevStatusRef = useRef<Neo4jConnectionStatus>("unknown");
 
@@ -41,10 +43,11 @@ export function useHealthPolling(): void {
       }
       const body: HealthResponse = await res.json();
       handleTransition(body.data.neo4j ?? "unknown");
+      setCopilotStatus(body.data.copilot ?? "unknown");
     } catch {
       handleTransition("disconnected");
     }
-  }, []);
+  }, [setCopilotStatus]);
 
   function handleTransition(next: Neo4jConnectionStatus): void {
     const prev = prevStatusRef.current;
