@@ -101,6 +101,7 @@ export interface SearchRequest {
   query: string;
   labels?: string[] | null;
   limit?: number;
+  session_id?: string | null;
 }
 
 export interface SearchResponse {
@@ -113,6 +114,7 @@ export interface ExpandRequest {
   hops?: number;
   limit?: number;
   current_canvas_count: number;
+  session_id?: string | null;
 }
 
 export interface ExpandResponse {
@@ -126,6 +128,7 @@ export interface PathRequest {
   max_hops?: number;
   mode?: "shortest" | "all_shortest";
   current_canvas_count: number;
+  session_id?: string | null;
 }
 
 export interface PathResponse {

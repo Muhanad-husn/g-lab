@@ -25,8 +25,10 @@ export function useGraphActions() {
     nodeId: string,
     opts?: { hops?: number; rel_types?: string[] | null },
   ): Promise<ExpandResponse | null> {
-    // Read current count synchronously at call time, not from stale subscription
-    const currentCount = useStore.getState().nodes.length;
+    // Read current count and session_id synchronously at call time
+    const state = useStore.getState();
+    const currentCount = state.nodes.length;
+    const sessionId = state.session?.id ?? null;
     try {
       const { data, warnings } = await expand({
         node_ids: [nodeId],
@@ -34,6 +36,7 @@ export function useGraphActions() {
         hops: opts?.hops ?? presetConfig.default_hops,
         limit: presetConfig.default_expansion_limit,
         current_canvas_count: currentCount,
+        session_id: sessionId,
       });
       addNodes(data.nodes);
       addEdges(data.edges);
@@ -69,13 +72,16 @@ export function useGraphActions() {
     targetId: string,
     opts?: { max_hops?: number },
   ): Promise<PathResponse | null> {
-    const currentCount = useStore.getState().nodes.length;
+    const state = useStore.getState();
+    const currentCount = state.nodes.length;
+    const sessionId = state.session?.id ?? null;
     try {
       const { data, warnings } = await findPathsApi({
         source_id: sourceId,
         target_id: targetId,
         max_hops: opts?.max_hops ?? presetConfig.default_hops,
         current_canvas_count: currentCount,
+        session_id: sessionId,
       });
       addNodes(data.nodes);
       addEdges(data.edges);

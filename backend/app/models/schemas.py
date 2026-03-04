@@ -79,6 +79,7 @@ class SearchRequest(BaseModel):
     query: str
     labels: list[str] | None = None
     limit: int = Field(default=20, ge=1, le=100)
+    session_id: str | None = None
 
 
 class SearchResponse(BaseModel):
@@ -91,6 +92,7 @@ class ExpandRequest(BaseModel):
     hops: int = Field(default=1, ge=1, le=5)
     limit: int = Field(default=25, ge=1, le=100)
     current_canvas_count: int
+    session_id: str | None = None
 
 
 class ExpandResponse(BaseModel):
@@ -104,6 +106,7 @@ class PathRequest(BaseModel):
     max_hops: int = Field(default=5, ge=1, le=5)
     mode: Literal["shortest", "all_shortest"] = "shortest"
     current_canvas_count: int
+    session_id: str | None = None
 
 
 class PathResponse(BaseModel):
@@ -115,6 +118,7 @@ class PathResponse(BaseModel):
 class RawQueryRequest(BaseModel):
     query: str
     parameters: dict[str, Any] = Field(default_factory=dict)
+    session_id: str | None = None
 
 
 # ---------------------------------------------------------------------------

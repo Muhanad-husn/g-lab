@@ -11,6 +11,8 @@ class ActionType(StrEnum):
     PATH_DISCOVERY = "path_discovery"
     FILTER_APPLY = "filter_apply"
     FINDING_SAVE = "finding_save"
+    FINDING_UPDATE = "finding_update"
+    FINDING_DELETE = "finding_delete"
     SESSION_CREATE = "session_create"
     SESSION_RESET = "session_reset"
     SESSION_EXPORT = "session_export"

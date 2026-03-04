@@ -9,8 +9,9 @@ import pytest
 from fastapi import FastAPI, Request
 from httpx import ASGITransport, AsyncClient
 
-from app.dependencies import get_neo4j
+from app.dependencies import get_action_logger, get_neo4j
 from app.routers import graph as graph_router
+from app.services.action_log import ActionLogger
 from app.services.neo4j_service import Neo4jService
 from app.utils.exceptions import CypherValidationError
 
@@ -58,9 +59,16 @@ async def graph_client() -> AsyncGenerator[tuple[AsyncClient, MagicMock], None]:
     def override_get_neo4j(_request: Request) -> Neo4jService:
         return mock_neo4j  # type: ignore[return-value]
 
+    mock_action_logger = MagicMock(spec=ActionLogger)
+    mock_action_logger.log = AsyncMock()
+
+    def override_get_action_logger(_request: Request) -> ActionLogger:
+        return mock_action_logger
+
     test_app = FastAPI()
     test_app.include_router(graph_router.router, prefix="/api/v1/graph")
     test_app.dependency_overrides[get_neo4j] = override_get_neo4j
+    test_app.dependency_overrides[get_action_logger] = override_get_action_logger
 
     async with AsyncClient(
         transport=ASGITransport(app=test_app),
