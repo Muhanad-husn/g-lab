@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createStore } from "zustand/vanilla";
 import { createConfigSlice, type ConfigSlice } from "@/store/configSlice";
+import { createCopilotSlice, type CopilotSlice } from "@/store/copilotSlice";
 import { createGraphSlice, type GraphSlice } from "@/store/graphSlice";
 import { createSessionSlice, type SessionSlice } from "@/store/sessionSlice";
 import { createUiSlice, type UiSlice } from "@/store/uiSlice";
 import { PRESETS } from "@/lib/constants";
-import type { GraphNode, SessionResponse } from "@/lib/types";
+import type { GraphDelta, GraphNode, SessionResponse } from "@/lib/types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -214,6 +215,48 @@ describe("uiSlice — selection", () => {
     store.getState().setSelectedIds(["n1"]);
     store.getState().setSelectedIds(["n2", "n3"]);
     expect(store.getState().selectedIds).toEqual(["n2", "n3"]);
+  });
+});
+
+// ─── copilotSlice — store.test coverage ───────────────────────────────────────
+
+describe("copilotSlice — streaming actions", () => {
+  type CombinedStore = CopilotSlice & GraphSlice;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let store: ReturnType<typeof createStore<CombinedStore>>;
+
+  beforeEach(() => {
+    store = createStore<CombinedStore>()((...a: any[]) => ({
+      ...createGraphSlice(...a),
+      ...createCopilotSlice(...a),
+    }));
+  });
+
+  it("startStream → appendTextChunk → finishStream lifecycle", () => {
+    store.getState().startStream();
+    expect(store.getState().isStreaming).toBe(true);
+
+    store.getState().appendTextChunk("Part 1 ");
+    store.getState().appendTextChunk("Part 2");
+    expect(store.getState().streamingContent).toBe("Part 1 Part 2");
+
+    store.getState().finishStream("sess-x");
+    expect(store.getState().isStreaming).toBe(false);
+    expect(store.getState().messages).toHaveLength(1);
+    expect(store.getState().messages[0].content).toBe("Part 1 Part 2");
+  });
+
+  it("acceptDelta cross-slice: adds to graphSlice and clears copilotSlice", () => {
+    const delta: GraphDelta = {
+      add_nodes: [{ id: "n1", labels: ["X"], properties: {} }],
+      add_edges: [],
+    };
+    store.getState().setPendingDelta(delta);
+    store.getState().acceptDelta();
+
+    expect(store.getState().nodes).toHaveLength(1);
+    expect(store.getState().nodes[0].id).toBe("n1");
+    expect(store.getState().pendingDelta).toBeNull();
   });
 });
 

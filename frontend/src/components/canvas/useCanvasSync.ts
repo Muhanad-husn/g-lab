@@ -33,6 +33,7 @@ export function useCanvasSync(cy: cytoscape.Core | null): void {
   const nodes = useStore((s) => s.nodes);
   const edges = useStore((s) => s.edges);
   const filters = useStore((s) => s.filters);
+  const pendingDelta = useStore((s) => s.pendingDelta);
   const setPositions = useStore((s) => s.setPositions);
   const setSelectedIds = useStore((s) => s.setSelectedIds);
   const clearSelection = useStore((s) => s.clearSelection);
@@ -147,6 +148,54 @@ export function useCanvasSync(cy: cytoscape.Core | null): void {
       cy.off("tap", handleTap);
     };
   }, [cy, setSelectedIds, clearSelection]);
+
+  // ─── Ghost sync: pendingDelta → cy ghost elements ─────────────────────────
+  // Adds proposed nodes/edges with the `.ghost` class when a delta arrives.
+  // On Accept: DeltaPreview calls cy.removeClass('ghost') before acceptDelta().
+  // On Discard: DeltaPreview calls cy.remove('.ghost') before clearPendingDelta().
+  // Cleanup (effect teardown) removes any leftover ghosts when delta clears.
+  useEffect(() => {
+    if (!cy || !pendingDelta) return;
+
+    let ghostsAdded = 0;
+
+    cy.batch(() => {
+      for (const node of pendingDelta.add_nodes) {
+        if (!cy.getElementById(node.id).length) {
+          cy.add({
+            group: "nodes",
+            data: nodeToCyData(node),
+            position: node.position ?? { x: 0, y: 0 },
+          }).addClass("ghost");
+          ghostsAdded++;
+        }
+      }
+
+      for (const edge of pendingDelta.add_edges) {
+        if (!cy.getElementById(edge.id).length) {
+          cy.add({
+            group: "edges",
+            data: {
+              id: edge.id,
+              source: edge.source,
+              target: edge.target,
+              type: edge.type,
+              edgeLabel: edge.type,
+            },
+          }).addClass("ghost");
+        }
+      }
+    });
+
+    if (ghostsAdded > 0) {
+      runLayout(cy, "cose-bilkent", true);
+    }
+
+    return () => {
+      // Remove any remaining ghost elements (fires on delta change or unmount)
+      cy.remove(".ghost");
+    };
+  }, [cy, pendingDelta]);
 
   // ─── Filter sync: store filters → cy visibility ───────────────────────────
   // Note: hide()/show() are not in @types/cytoscape; use style('display',...).

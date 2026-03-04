@@ -14,14 +14,15 @@ export const CANVAS_ERROR_AT = 500;
 // Investigation presets — Phase 1 uses Standard only
 export type PresetName = "standard" | "deep_dive" | "quick_look";
 
-export interface PresetConfig {
+/** Frontend-only static preset option (not the API PresetConfig from types.ts). */
+export interface LocalPreset {
   name: PresetName;
   label: string;
   default_hops: number;
   default_expansion_limit: number;
 }
 
-export const PRESETS: Record<PresetName, PresetConfig> = {
+export const PRESETS: Record<PresetName, LocalPreset> = {
   standard: {
     name: "standard",
     label: "Standard Investigation",
@@ -46,3 +47,23 @@ export const DEFAULT_PRESET: PresetName = "standard";
 
 // API base URL — resolved via Vite proxy in dev, same-origin in production
 export const API_BASE = "/api/v1";
+
+// ─── Phase 2: Copilot constants ───────────────────────────────────────────────
+
+export const COPILOT_TIMEOUT_MS = 120_000;
+
+export const CONFIDENCE_BANDS = {
+  HIGH: { threshold: 0.7, label: "High", color: "green" },
+  MEDIUM: { threshold: 0.4, label: "Medium", color: "yellow" },
+  LOW: { threshold: 0, label: "Low", color: "red" },
+} as const;
+
+export const SSE_EVENT_TYPES = [
+  "text_chunk",
+  "evidence",
+  "graph_delta",
+  "confidence",
+  "status",
+  "done",
+  "error",
+] as const;
