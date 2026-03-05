@@ -30,6 +30,7 @@ export interface CopilotSlice {
   startStream: () => void;
   appendTextChunk: (content: string) => void;
   setEvidence: (sources: EvidenceSource[]) => void;
+  appendDocEvidence: (sources: EvidenceSource[]) => void;
   setPendingDelta: (delta: GraphDelta) => void;
   setConfidence: (score: ConfidenceScore) => void;
   setStatus: (stage: string) => void;
@@ -71,6 +72,9 @@ export const createCopilotSlice: StateCreator<
     set((state) => ({ streamingContent: state.streamingContent + content })),
 
   setEvidence: (sources) => set({ evidence: sources }),
+
+  appendDocEvidence: (sources) =>
+    set((state) => ({ evidence: [...state.evidence, ...sources] })),
 
   setPendingDelta: (delta) => set({ pendingDelta: delta }),
 

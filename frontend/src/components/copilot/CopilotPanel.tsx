@@ -12,6 +12,7 @@ const STATUS_LABELS: Record<string, string> = {
   starting: "Starting…",
   routing: "Routing query…",
   retrieving: "Querying graph…",
+  retrieving_docs: "Retrieving documents…",
   re_retrieving: "Expanding retrieval…",
   synthesising: "Synthesising answer…",
 };
@@ -34,7 +35,9 @@ interface MessageBubbleProps {
 
 function MessageBubble({ message }: MessageBubbleProps) {
   const confidence = useStore((s) => s.confidence);
+  const evidence = useStore((s) => s.evidence);
   const isAssistant = message.role === "assistant";
+  const hasDocEvidence = evidence.some((e) => e.type === "doc_chunk");
 
   return (
     <div className={`flex flex-col gap-0.5 px-3 py-2 ${isAssistant ? "" : "items-end"}`}>
@@ -53,7 +56,7 @@ function MessageBubble({ message }: MessageBubbleProps) {
       {/* Show confidence badge on the last assistant message only */}
       {isAssistant && confidence && (
         <div className="self-start mt-0.5">
-          <ConfidenceBadge confidence={confidence} />
+          <ConfidenceBadge confidence={confidence} hasDocEvidence={hasDocEvidence} />
         </div>
       )}
     </div>
@@ -94,6 +97,7 @@ export function CopilotPanel() {
   const startStream = useStore((s) => s.startStream);
   const appendTextChunk = useStore((s) => s.appendTextChunk);
   const setEvidence = useStore((s) => s.setEvidence);
+  const appendDocEvidence = useStore((s) => s.appendDocEvidence);
   const setPendingDelta = useStore((s) => s.setPendingDelta);
   const setConfidence = useStore((s) => s.setConfidence);
   const setStatus = useStore((s) => s.setStatus);
@@ -134,6 +138,7 @@ export function CopilotPanel() {
         {
           onTextChunk: ({ content }) => appendTextChunk(content),
           onEvidence: ({ sources }) => setEvidence(sources),
+          onDocEvidence: ({ sources }) => appendDocEvidence(sources),
           onGraphDelta: (delta) => setPendingDelta(delta),
           onConfidence: (score) => setConfidence(score),
           onStatus: ({ stage }) => setStatus(stage),

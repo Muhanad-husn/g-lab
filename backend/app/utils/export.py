@@ -35,6 +35,7 @@ def pack_session(
     findings_data: list[dict[str, Any]],
     action_log_ndjson: str,
     snapshots: dict[str, bytes],
+    vector_manifest: dict[str, Any] | None = None,
 ) -> bytes:
     """Build a .g-lab-session ZIP archive and return raw bytes.
 
@@ -44,6 +45,9 @@ def pack_session(
         findings_data:      List of finding metadata dicts (no snapshot bytes).
         action_log_ndjson:  NDJSON action log content (may be empty string).
         snapshots:          Mapping of finding_id → raw PNG bytes.
+        vector_manifest:    Optional Phase 3 document library reference
+                            (library name + document filenames — not the files
+                            themselves).  Omitted when None.
 
     Returns:
         ZIP archive as bytes.
@@ -69,6 +73,11 @@ def pack_session(
             zf.writestr(
                 f"{_PREFIX}/findings/snapshots/{finding_id}.png",
                 png_bytes,
+            )
+        if vector_manifest is not None:
+            zf.writestr(
+                f"{_PREFIX}/vector_manifest.json",
+                json.dumps(vector_manifest, indent=2),
             )
 
     return buf.getvalue()

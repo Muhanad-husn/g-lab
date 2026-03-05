@@ -10,6 +10,7 @@ import type {
 export interface SSEHandlers {
   onTextChunk?: (data: { content: string }) => void;
   onEvidence?: (data: { sources: EvidenceSource[] }) => void;
+  onDocEvidence?: (data: { sources: EvidenceSource[] }) => void;
   onGraphDelta?: (data: GraphDelta) => void;
   onConfidence?: (data: ConfidenceScore) => void;
   onStatus?: (data: { stage: string }) => void;
@@ -38,6 +39,9 @@ function dispatchEvent(
       break;
     case "evidence":
       handlers.onEvidence?.(parsed as { sources: EvidenceSource[] });
+      break;
+    case "doc_evidence":
+      handlers.onDocEvidence?.(parsed as { sources: EvidenceSource[] });
       break;
     case "graph_delta":
       handlers.onGraphDelta?.(parsed as GraphDelta);

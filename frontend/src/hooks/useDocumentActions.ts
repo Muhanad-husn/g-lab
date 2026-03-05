@@ -120,8 +120,12 @@ export function useDocumentActions() {
   }
 
   async function handleDetachLibrary(): Promise<boolean> {
+    if (!session) {
+      pushError("No active session to detach from.");
+      return false;
+    }
     try {
-      await detachLibrary();
+      await detachLibrary(session.id);
       clearAttachedLibrary();
       return true;
     } catch {

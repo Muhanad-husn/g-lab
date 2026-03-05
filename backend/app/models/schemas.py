@@ -259,6 +259,11 @@ class EvidenceSource(BaseModel):
     type: Literal["graph_path", "doc_chunk"]
     id: str
     content: str
+    # Optional metadata for doc_chunk type
+    filename: str | None = None
+    page_number: int | None = None
+    section_heading: str | None = None
+    parse_tier: str | None = None
 
 
 # ---------------------------------------------------------------------------

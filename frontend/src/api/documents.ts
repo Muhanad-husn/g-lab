@@ -65,6 +65,16 @@ export async function attachLibrary(
   await post<null>(`/documents/libraries/${libraryId}/attach`, body);
 }
 
-export async function detachLibrary(): Promise<void> {
-  await post<null>("/documents/libraries/detach");
+export async function detachLibrary(sessionId: string): Promise<void> {
+  const body: LibraryAttachRequest = { session_id: sessionId };
+  await post<null>("/documents/libraries/detach", body);
+}
+
+export async function getAttachedLibrary(
+  sessionId: string,
+): Promise<string | null> {
+  const { data } = await get<{ library_id: string | null }>(
+    `/documents/libraries/attached/${sessionId}`,
+  );
+  return data.library_id;
 }

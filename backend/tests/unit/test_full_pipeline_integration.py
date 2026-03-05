@@ -145,15 +145,15 @@ async def test_integration_happy_path_emits_correct_event_sequence() -> None:
 
     # Structural assertions
     assert event_types[0] == "status"
-    assert events[0].data["status"] == "routing"
+    assert events[0].data["stage"] == "routing"
     assert event_types[1] == "status"
-    assert events[1].data["status"] == "retrieving"
+    assert events[1].data["stage"] == "retrieving"
     assert "text_chunk" in event_types
     assert "confidence" in event_types
     assert event_types[-1] == "done"
 
     # No re-retrieval
-    statuses = [e.data["status"] for e in events if e.event == "status"]
+    statuses = [e.data["stage"] for e in events if e.event == "status"]
     assert "re_retrieving" not in statuses
 
 
@@ -202,7 +202,7 @@ async def test_integration_re_retrieval_on_low_confidence() -> None:
             semaphore=_make_semaphore(),
         )
 
-    statuses = [e.data["status"] for e in events if e.event == "status"]
+    statuses = [e.data["stage"] for e in events if e.event == "status"]
     assert "re_retrieving" in statuses
 
     # Only second-pass text should appear
