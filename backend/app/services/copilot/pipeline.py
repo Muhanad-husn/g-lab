@@ -15,7 +15,13 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 from app.core.logging import get_logger
-from app.models.schemas import CopilotQueryRequest, PresetConfig, RouterIntent
+from app.models.schemas import (
+    CopilotQueryRequest,
+    DocumentChunk,
+    PresetConfig,
+    RouterIntent,
+)
+from app.services.copilot.document_retrieval import DocumentRetrievalRole
 from app.services.copilot.graph_retrieval import GraphRetrievalService
 from app.services.copilot.openrouter import OpenRouterClient
 from app.services.copilot.router import RouterService
@@ -42,6 +48,9 @@ class CopilotPipeline:
         preset_config: PresetConfig,
         session_id: str,
         semaphore: asyncio.Semaphore,
+        retrieval_service: Any = None,
+        reranker_service: Any = None,
+        library_id: str | None = None,
     ) -> AsyncGenerator[SSEEvent, None]:
         """Return an async generator that runs the full pipeline.
 
@@ -52,6 +61,14 @@ class CopilotPipeline:
           ``re_retrieving``
         - All events from :class:`SynthesiserService`
         - ``error`` event on timeout or concurrency conflict
+
+        Args:
+            retrieval_service: Optional :class:`DocumentRetrievalService`.
+                When provided alongside ``reranker_service`` and
+                ``library_id``, document retrieval runs in parallel with
+                graph retrieval when ``intent.needs_docs=True``.
+            reranker_service: Optional :class:`RerankerService`.
+            library_id: ID of the session-attached document library, if any.
         """
         return self._run(
             request=request,
@@ -60,6 +77,9 @@ class CopilotPipeline:
             preset_config=preset_config,
             session_id=session_id,
             semaphore=semaphore,
+            retrieval_service=retrieval_service,
+            reranker_service=reranker_service,
+            library_id=library_id,
         )
 
     # ------------------------------------------------------------------
@@ -74,6 +94,9 @@ class CopilotPipeline:
         preset_config: PresetConfig,
         session_id: str,
         semaphore: asyncio.Semaphore,
+        retrieval_service: Any = None,
+        reranker_service: Any = None,
+        library_id: str | None = None,
     ) -> AsyncGenerator[SSEEvent, None]:
         """Top-level generator: semaphore guard + timeout wrapper."""
         # Concurrency check (non-blocking)
@@ -99,6 +122,9 @@ class CopilotPipeline:
                         neo4j_service=neo4j_service,
                         openrouter_client=openrouter_client,
                         preset_config=preset_config,
+                        retrieval_service=retrieval_service,
+                        reranker_service=reranker_service,
+                        library_id=library_id,
                     ):
                         yield event
             except TimeoutError:
@@ -121,6 +147,9 @@ class CopilotPipeline:
         neo4j_service: Any,
         openrouter_client: OpenRouterClient,
         preset_config: PresetConfig,
+        retrieval_service: Any = None,
+        reranker_service: Any = None,
+        library_id: str | None = None,
     ) -> AsyncGenerator[SSEEvent, None]:
         """Core pipeline logic: route → retrieve → synthesise → maybe re-retrieve."""
         models = preset_config.models
@@ -136,8 +165,11 @@ class CopilotPipeline:
         retrieval_tokens = budgets.get("graphRetrieval", 512)
         synth_tokens = budgets.get("synthesiser", 4096)
 
+        doc_top_k = _GUARDRAILS.SOFT_LIMITS["doc_retrieval_top_k"]
+        reranker_top_k = _GUARDRAILS.SOFT_LIMITS["reranker_top_k"]
+
         router_svc = RouterService(openrouter_client)
-        retrieval_svc = GraphRetrievalService(openrouter_client)
+        graph_retrieval_svc = GraphRetrievalService(openrouter_client)
         synthesiser_svc = SynthesiserService(openrouter_client)
 
         # ── Step 1: Intent routing ──────────────────────────────────────
@@ -155,9 +187,14 @@ class CopilotPipeline:
             needs_docs=intent.needs_docs,
         )
 
-        # ── Step 2: Graph retrieval ─────────────────────────────────────
+        # ── Step 2: Parallel graph + document retrieval ─────────────────
         yield SSEEvent(event="status", data={"status": "retrieving"})
-        rows, _evidence = await retrieval_svc.retrieve(
+
+        doc_role: DocumentRetrievalRole | None = None
+        if retrieval_service is not None and reranker_service is not None:
+            doc_role = DocumentRetrievalRole(retrieval_service, reranker_service)
+
+        graph_coro = graph_retrieval_svc.retrieve(
             intent=intent,
             schema_summary="",
             neo4j_service=neo4j_service,
@@ -165,7 +202,25 @@ class CopilotPipeline:
             temperature=0.0,
             max_tokens=retrieval_tokens,
         )
-        logger.debug("copilot_retrieved", row_count=len(rows))
+        doc_coro = (
+            doc_role.retrieve(
+                intent=intent,
+                library_id=library_id,
+                top_k=doc_top_k,
+                reranker_top_k=reranker_top_k,
+            )
+            if doc_role is not None
+            else _empty_doc_result()
+        )
+
+        (rows, _graph_evidence), (doc_chunks, _doc_evidence) = await asyncio.gather(
+            graph_coro, doc_coro
+        )
+        logger.debug(
+            "copilot_retrieved",
+            row_count=len(rows),
+            doc_chunk_count=len(doc_chunks),
+        )
 
         # ── Step 3: First synthesis pass (buffered to inspect confidence)
         first_pass: list[SSEEvent] = []
@@ -176,6 +231,7 @@ class CopilotPipeline:
             graph_context="",
             model=synth_model,
             max_tokens=synth_tokens,
+            doc_chunks=doc_chunks,
         ):
             first_pass.append(event)
             if event.event == "confidence" and isinstance(event.data, dict):
@@ -190,14 +246,14 @@ class CopilotPipeline:
             )
             yield SSEEvent(event="status", data={"status": "re_retrieving"})
 
-            # Broaden the search scope (hint at wider graph traversal)
+            # Broaden the graph search scope
             broad_intent = RouterIntent(
                 needs_graph=intent.needs_graph,
                 needs_docs=intent.needs_docs,
                 cypher_hint=_broaden_hint(intent.cypher_hint),
                 doc_query=intent.doc_query,
             )
-            re_rows, _ = await retrieval_svc.retrieve(
+            re_graph_coro = graph_retrieval_svc.retrieve(
                 intent=broad_intent,
                 schema_summary="",
                 neo4j_service=neo4j_service,
@@ -205,13 +261,29 @@ class CopilotPipeline:
                 temperature=0.3,  # more exploratory
                 max_tokens=retrieval_tokens,
             )
-            combined = (rows + re_rows)[:50]
+            # Increase doc top-k by 5 on re-retrieval
+            re_doc_coro = (
+                doc_role.retrieve(
+                    intent=broad_intent,
+                    library_id=library_id,
+                    top_k=doc_top_k + 5,
+                    reranker_top_k=reranker_top_k,
+                )
+                if doc_role is not None
+                else _empty_doc_result()
+            )
+            (re_rows, _), (re_doc_chunks, _) = await asyncio.gather(
+                re_graph_coro, re_doc_coro
+            )
+            combined_rows = (rows + re_rows)[:50]
+            combined_docs = (doc_chunks + re_doc_chunks)[: reranker_top_k * 2]
             async for event in synthesiser_svc.synthesise(
                 query=request.query,
-                graph_results=combined,
+                graph_results=combined_rows,
                 graph_context="",
                 model=synth_model,
                 max_tokens=synth_tokens,
+                doc_chunks=combined_docs,
             ):
                 yield event
         else:
@@ -229,3 +301,8 @@ def _broaden_hint(original_hint: str | None) -> str:
     """Expand the Cypher hint to suggest a wider traversal."""
     base = original_hint or "MATCH related nodes"
     return f"Expand scope — traverse one additional hop: {base}"
+
+
+async def _empty_doc_result() -> tuple[list[DocumentChunk], list[Any]]:
+    """Coroutine that returns empty doc retrieval results (no library/service)."""
+    return [], []

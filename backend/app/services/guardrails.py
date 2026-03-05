@@ -35,6 +35,14 @@ class GuardrailService:
         "max_docs_per_library": 100,
     }
 
+    SOFT_LIMITS: ClassVar[dict[str, int]] = {
+        "doc_retrieval_top_k": 5,  # max 20
+        "reranker_top_k": 3,  # max 10
+    }
+
+    _DOC_RETRIEVAL_TOP_K_MAX = 20
+    _RERANKER_TOP_K_MAX = 10
+
     # Warning threshold: warn when canvas is at or above this.
     _CANVAS_WARNING_THRESHOLD = 400
 

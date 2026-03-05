@@ -16,6 +16,7 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 from app.core.logging import get_logger
+from app.models.schemas import DocumentChunk
 from app.services.copilot.openrouter import OpenRouterClient
 from app.services.copilot.prompts import SYNTHESISER_SYSTEM_PROMPT
 from app.services.copilot.sse import SSEEvent, parse_sse_buffer
@@ -41,6 +42,7 @@ class SynthesiserService:
         temperature: float = 0.7,
         max_tokens: int = 2048,
         stream: bool = True,
+        doc_chunks: list[DocumentChunk] | None = None,
     ) -> AsyncGenerator[SSEEvent, None]:
         """Return an async generator that yields typed SSE events.
 
@@ -54,6 +56,7 @@ class SynthesiserService:
             temperature: Sampling temperature.
             max_tokens: Token budget for the answer.
             stream: Reserved; streaming is always used.
+            doc_chunks: Optional document chunks from vector search + reranking.
 
         Returns:
             Async generator yielding :class:`SSEEvent` objects in order:
@@ -68,6 +71,7 @@ class SynthesiserService:
             model=model,
             temperature=temperature,
             max_tokens=max_tokens,
+            doc_chunks=doc_chunks or [],
         )
 
     async def _stream(
@@ -78,10 +82,12 @@ class SynthesiserService:
         model: str,
         temperature: float,
         max_tokens: int,
+        doc_chunks: list[DocumentChunk] | None = None,
     ) -> AsyncGenerator[SSEEvent, None]:
         """Internal async generator — yields typed SSE events."""
         system_prompt = SYNTHESISER_SYSTEM_PROMPT.format(
             graph_results=_format_graph_results(graph_results),
+            doc_context=_format_doc_chunks(doc_chunks or []),
             query=query,
         )
         if graph_context:
@@ -130,6 +136,26 @@ class SynthesiserService:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _format_doc_chunks(chunks: list[DocumentChunk]) -> str:
+    """Serialise document chunks for inclusion in the synthesiser prompt."""
+    if not chunks:
+        return "(no document context)"
+    lines: list[str] = []
+    for i, chunk in enumerate(chunks):
+        meta = chunk.metadata
+        header_parts: list[str] = [f"[{i + 1}]", f"doc_id={meta.document_id}"]
+        if meta.page_number is not None:
+            header_parts.append(f"page={meta.page_number}")
+        if meta.section_heading:
+            header_parts.append(f"section={meta.section_heading!r}")
+        header_parts.append(f"tier={meta.parse_tier}")
+        header_parts.append(f"chunk_id={chunk.id}")
+        lines.append(" ".join(header_parts))
+        lines.append(chunk.text[:500])
+        lines.append("")
+    return "\n".join(lines).strip()
 
 
 def _format_graph_results(rows: list[dict[str, Any]]) -> str:
