@@ -259,3 +259,63 @@ class EvidenceSource(BaseModel):
     type: Literal["graph_path", "doc_chunk"]
     id: str
     content: str
+
+
+# ---------------------------------------------------------------------------
+# Document Library schemas (Phase 3 — §14.3)
+# ---------------------------------------------------------------------------
+
+
+class DocumentLibraryCreate(BaseModel):
+    name: str
+
+
+class DocumentLibraryResponse(BaseModel):
+    id: str
+    name: str
+    created_at: str
+    doc_count: int
+    chunk_count: int
+    parse_quality: str | None
+    indexed_at: str | None
+
+
+class DocumentResponse(BaseModel):
+    id: str
+    library_id: str
+    filename: str
+    file_hash: str
+    parse_tier: str
+    chunk_count: int
+    uploaded_at: str
+
+
+class DocumentUploadResponse(BaseModel):
+    document: DocumentResponse
+    parse_tier: str
+    chunk_count: int
+
+
+class LibraryAttachRequest(BaseModel):
+    session_id: str
+
+
+class ChunkMetadata(BaseModel):
+    document_id: str
+    library_id: str
+    page_number: int | None = None
+    section_heading: str | None = None
+    chunk_index: int
+    parse_tier: str
+
+
+class DocumentChunk(BaseModel):
+    id: str
+    text: str
+    metadata: ChunkMetadata
+    similarity_score: float | None = None
+
+
+class DocumentRetrievalResult(BaseModel):
+    chunks: list[DocumentChunk]
+    evidence_sources: list[EvidenceSource]

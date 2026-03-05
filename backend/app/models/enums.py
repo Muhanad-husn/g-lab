@@ -22,6 +22,12 @@ class ActionType(StrEnum):
     PRESET_CREATE = "preset_create"
     PRESET_UPDATE = "preset_update"
     PRESET_DELETE = "preset_delete"
+    DOC_UPLOAD = "doc_upload"
+    DOC_DELETE = "doc_delete"
+    LIBRARY_CREATE = "library_create"
+    LIBRARY_DELETE = "library_delete"
+    LIBRARY_ATTACH = "library_attach"
+    LIBRARY_DETACH = "library_detach"
 
 
 class SessionStatus(StrEnum):
