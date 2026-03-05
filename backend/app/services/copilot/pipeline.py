@@ -51,6 +51,8 @@ class CopilotPipeline:
         retrieval_service: Any = None,
         reranker_service: Any = None,
         library_id: str | None = None,
+        schema_summary: str = "",
+        canvas_summary: str = "",
     ) -> AsyncGenerator[SSEEvent, None]:
         """Return an async generator that runs the full pipeline.
 
@@ -80,6 +82,8 @@ class CopilotPipeline:
             retrieval_service=retrieval_service,
             reranker_service=reranker_service,
             library_id=library_id,
+            schema_summary=schema_summary,
+            canvas_summary=canvas_summary,
         )
 
     # ------------------------------------------------------------------
@@ -97,6 +101,8 @@ class CopilotPipeline:
         retrieval_service: Any = None,
         reranker_service: Any = None,
         library_id: str | None = None,
+        schema_summary: str = "",
+        canvas_summary: str = "",
     ) -> AsyncGenerator[SSEEvent, None]:
         """Top-level generator: semaphore guard + timeout wrapper."""
         # Concurrency check (non-blocking)
@@ -125,6 +131,8 @@ class CopilotPipeline:
                         retrieval_service=retrieval_service,
                         reranker_service=reranker_service,
                         library_id=library_id,
+                        schema_summary=schema_summary,
+                        canvas_summary=canvas_summary,
                     ):
                         yield event
             except TimeoutError:
@@ -150,6 +158,8 @@ class CopilotPipeline:
         retrieval_service: Any = None,
         reranker_service: Any = None,
         library_id: str | None = None,
+        schema_summary: str = "",
+        canvas_summary: str = "",
     ) -> AsyncGenerator[SSEEvent, None]:
         """Core pipeline logic: route → retrieve → synthesise → maybe re-retrieve."""
         models = preset_config.models
@@ -176,10 +186,11 @@ class CopilotPipeline:
         yield SSEEvent(event="status", data={"stage": "routing"})
         intent = await router_svc.classify(
             query=request.query,
-            graph_context_summary="",
+            graph_context_summary=schema_summary,
             model=router_model,
             temperature=0.0,
             max_tokens=router_tokens,
+            canvas_summary=canvas_summary,
         )
         logger.debug(
             "copilot_routed",
@@ -199,11 +210,12 @@ class CopilotPipeline:
 
         graph_coro = graph_retrieval_svc.retrieve(
             intent=intent,
-            schema_summary="",
+            schema_summary=schema_summary,
             neo4j_service=neo4j_service,
             model=retrieval_model,
             temperature=0.0,
             max_tokens=retrieval_tokens,
+            canvas_summary=canvas_summary,
         )
         doc_coro = (
             doc_role.retrieve(
@@ -237,10 +249,11 @@ class CopilotPipeline:
         async for event in synthesiser_svc.synthesise(
             query=request.query,
             graph_results=rows,
-            graph_context="",
+            graph_context=schema_summary,
             model=synth_model,
             max_tokens=synth_tokens,
             doc_chunks=doc_chunks,
+            canvas_summary=canvas_summary,
         ):
             first_pass.append(event)
             if event.event == "confidence" and isinstance(event.data, dict):
@@ -264,11 +277,12 @@ class CopilotPipeline:
             )
             re_graph_coro = graph_retrieval_svc.retrieve(
                 intent=broad_intent,
-                schema_summary="",
+                schema_summary=schema_summary,
                 neo4j_service=neo4j_service,
                 model=retrieval_model,
                 temperature=0.3,  # more exploratory
                 max_tokens=retrieval_tokens,
+                canvas_summary=canvas_summary,
             )
             # Increase doc top-k by 5 on re-retrieval
             re_doc_coro = (
@@ -289,10 +303,11 @@ class CopilotPipeline:
             async for event in synthesiser_svc.synthesise(
                 query=request.query,
                 graph_results=combined_rows,
-                graph_context="",
+                graph_context=schema_summary,
                 model=synth_model,
                 max_tokens=synth_tokens,
                 doc_chunks=combined_docs,
+                canvas_summary=canvas_summary,
             ):
                 yield event
         else:
@@ -315,3 +330,36 @@ def _broaden_hint(original_hint: str | None) -> str:
 async def _empty_doc_result() -> tuple[list[DocumentChunk], list[Any]]:
     """Coroutine that returns empty doc retrieval results (no library/service)."""
     return [], []
+
+
+def format_schema_summary(schema: dict[str, Any]) -> str:
+    """Format a Neo4j schema dict into a concise LLM-readable summary.
+
+    Expects the shape returned by ``Neo4jService.get_schema()``:
+    ``{"labels": [...], "relationship_types": [...]}``.
+    """
+    parts: list[str] = []
+
+    labels = schema.get("labels") or []
+    if labels:
+        parts.append("Node labels:")
+        for info in labels:
+            label = info.get("label", "?")
+            count = info.get("count")
+            props = info.get("property_keys") or []
+            count_str = f" ({count} nodes)" if count is not None else ""
+            props_str = f" — properties: {', '.join(props)}" if props else ""
+            parts.append(f"  :{label}{count_str}{props_str}")
+
+    rel_types = schema.get("relationship_types") or []
+    if rel_types:
+        parts.append("Relationship types:")
+        for info in rel_types:
+            rel_type = info.get("type", "?")
+            count = info.get("count")
+            props = info.get("property_keys") or []
+            count_str = f" ({count} rels)" if count is not None else ""
+            props_str = f" — properties: {', '.join(props)}" if props else ""
+            parts.append(f"  [:{rel_type}]{count_str}{props_str}")
+
+    return "\n".join(parts) if parts else ""

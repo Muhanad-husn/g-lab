@@ -228,6 +228,7 @@ class CopilotQueryRequest(BaseModel):
     session_id: str
     include_graph_context: bool = True
     model_assignments: dict[str, str] | None = None
+    canvas_summary: str | None = None
 
 
 class CopilotMessage(BaseModel):

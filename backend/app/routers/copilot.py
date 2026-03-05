@@ -29,7 +29,7 @@ from app.models.schemas import CopilotQueryRequest, PresetConfig
 from app.services.action_log import ActionLogger
 from app.services.conversation_service import ConversationService
 from app.services.copilot.openrouter import OpenRouterClient
-from app.services.copilot.pipeline import CopilotPipeline
+from app.services.copilot.pipeline import CopilotPipeline, format_schema_summary
 from app.services.copilot.sse import format_sse
 from app.services.guardrails import GuardrailService
 from app.utils.response import envelope, error_response
@@ -82,6 +82,15 @@ async def query(
     # Get optional Neo4j service (degraded mode — may be None)
     neo4j_svc: Any = getattr(request.app.state, "neo4j_service", None)
 
+    # Fetch Neo4j schema for LLM context (labels, rel types, properties)
+    schema_summary = ""
+    if neo4j_svc is not None:
+        try:
+            schema = await neo4j_svc.get_schema()
+            schema_summary = format_schema_summary(schema)
+        except Exception as exc:
+            _logger.warning("copilot_schema_fetch_failed", error=str(exc))
+
     # Resolve preset config, applying frontend model overrides if provided
     preset_config = PresetConfig()
     if body.model_assignments:
@@ -103,6 +112,8 @@ async def query(
             preset_config=preset_config,
             session_id=body.session_id,
             semaphore=semaphore,
+            schema_summary=schema_summary,
+            canvas_summary=body.canvas_summary or "",
         ):
             # Collect assistant text for conversation storage
             if event.event == "text_chunk" and isinstance(event.data, dict):

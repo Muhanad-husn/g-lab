@@ -43,6 +43,7 @@ class SynthesiserService:
         max_tokens: int = 2048,
         stream: bool = True,
         doc_chunks: list[DocumentChunk] | None = None,
+        canvas_summary: str = "",
     ) -> AsyncGenerator[SSEEvent, None]:
         """Return an async generator that yields typed SSE events.
 
@@ -72,6 +73,7 @@ class SynthesiserService:
             temperature=temperature,
             max_tokens=max_tokens,
             doc_chunks=doc_chunks or [],
+            canvas_summary=canvas_summary,
         )
 
     async def _stream(
@@ -83,12 +85,14 @@ class SynthesiserService:
         temperature: float,
         max_tokens: int,
         doc_chunks: list[DocumentChunk] | None = None,
+        canvas_summary: str = "",
     ) -> AsyncGenerator[SSEEvent, None]:
         """Internal async generator — yields typed SSE events."""
         system_prompt = SYNTHESISER_SYSTEM_PROMPT.format(
             graph_results=_format_graph_results(graph_results),
             doc_context=_format_doc_chunks(doc_chunks or []),
             query=query,
+            canvas_context=canvas_summary or "(empty canvas)",
         )
         if graph_context:
             system_prompt = f"Graph context:\n{graph_context}\n\n{system_prompt}"

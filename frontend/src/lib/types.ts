@@ -216,6 +216,8 @@ export interface CopilotQueryRequest {
   query: string;
   session_id: string;
   include_graph_context?: boolean;
+  model_assignments?: Record<string, string> | null;
+  canvas_summary?: string | null;
 }
 
 export interface CopilotMessage {

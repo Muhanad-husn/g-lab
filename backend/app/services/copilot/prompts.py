@@ -32,6 +32,9 @@ Rules:
 
 Graph schema summary:
 {schema_summary}
+
+Canvas context (nodes/edges currently visible on the investigation canvas):
+{canvas_context}
 """
 
 # ---------------------------------------------------------------------------
@@ -54,6 +57,10 @@ Graph schema:
 {schema_summary}
 
 Routing hint from previous step: {cypher_hint}
+
+Canvas context (what the investigator is currently looking at):
+{canvas_context}
+Prefer queries that complement what is already on the canvas rather than re-fetching it.
 """
 
 GRAPH_RETRIEVAL_RETRY_PROMPT = """\
@@ -117,6 +124,11 @@ Scoring guide:
 Be concise.  Do not hallucinate node IDs or relationship types not present
 in the provided graph results.  When citing document chunks include the
 filename, page number, and chunk index in the evidence content field.
+
+Canvas context (nodes/edges the investigator currently has):
+{canvas_context}
+Reference visible entities when relevant and suggest graph_delta
+that complements the canvas.
 
 Graph results:
 {graph_results}

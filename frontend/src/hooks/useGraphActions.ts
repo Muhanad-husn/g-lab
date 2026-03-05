@@ -107,6 +107,9 @@ export function useGraphActions() {
    * the delta nodes/edges into graphSlice and clears pendingDelta.
    */
   function acceptCopilotDelta(): void {
+    // Snapshot current canvas state for undo before applying delta
+    useStore.getState().snapshotCanvas();
+
     const cy = cytoscapeRef.current;
     if (cy) {
       // Promote ghost elements → real (remove dashed style, make interactive)

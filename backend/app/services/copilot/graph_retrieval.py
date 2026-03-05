@@ -41,6 +41,7 @@ class GraphRetrievalService:
         model: str = "anthropic/claude-3-haiku",
         temperature: float = 0.0,
         max_tokens: int = 512,
+        canvas_summary: str = "",
     ) -> tuple[list[dict[str, Any]], list[EvidenceSource]]:
         """Generate a Cypher query and return raw rows + evidence sources.
 
@@ -69,6 +70,7 @@ class GraphRetrievalService:
             model=model,
             temperature=temperature,
             max_tokens=max_tokens,
+            canvas_summary=canvas_summary,
         )
         if not cypher:
             return [], []
@@ -81,6 +83,7 @@ class GraphRetrievalService:
             model=model,
             temperature=temperature,
             max_tokens=max_tokens,
+            canvas_summary=canvas_summary,
         )
         if not clean_cypher:
             return [], []
@@ -109,11 +112,13 @@ class GraphRetrievalService:
         model: str,
         temperature: float,
         max_tokens: int,
+        canvas_summary: str = "",
     ) -> str:
         """Ask the LLM to produce a Cypher query."""
         system_prompt = GRAPH_RETRIEVAL_SYSTEM_PROMPT.format(
             schema_summary=schema_summary or "(schema not available)",
             cypher_hint=intent.cypher_hint or "none",
+            canvas_context=canvas_summary or "(empty canvas)",
         )
         messages = [
             {"role": "system", "content": system_prompt},
@@ -142,6 +147,7 @@ class GraphRetrievalService:
         model: str,
         temperature: float,
         max_tokens: int,
+        canvas_summary: str = "",
     ) -> str:
         """Sanitise the query; retry once if rejected."""
         first_reason = ""
@@ -164,6 +170,7 @@ class GraphRetrievalService:
             model=model,
             temperature=temperature,
             max_tokens=max_tokens,
+            canvas_summary=canvas_summary,
         )
         if not retry_cypher:
             return ""
@@ -187,11 +194,13 @@ class GraphRetrievalService:
         model: str,
         temperature: float,
         max_tokens: int,
+        canvas_summary: str = "",
     ) -> str:
         """Ask the LLM to rewrite the rejected query."""
         system_prompt = GRAPH_RETRIEVAL_SYSTEM_PROMPT.format(
             schema_summary=schema_summary or "(schema not available)",
             cypher_hint=intent.cypher_hint or "none",
+            canvas_context=canvas_summary or "(empty canvas)",
         )
         retry_user_msg = GRAPH_RETRIEVAL_RETRY_PROMPT.format(
             rejection_reason=rejection_reason,

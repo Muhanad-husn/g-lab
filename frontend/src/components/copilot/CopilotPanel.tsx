@@ -4,7 +4,48 @@ import { useSSE } from "@/hooks/useSSE";
 import { useReadOnlyMode } from "@/hooks/useReadOnlyMode";
 import { ConfidenceBadge } from "./ConfidenceBadge";
 import { API_BASE } from "@/lib/constants";
-import type { CopilotMessage } from "@/lib/types";
+import type { CopilotMessage, GraphNode, GraphEdge } from "@/lib/types";
+
+// ─── Canvas summary builder ─────────────────────────────────────────────────
+
+function buildCanvasSummary(): string {
+  const { nodes, edges } = useStore.getState() as {
+    nodes: GraphNode[];
+    edges: GraphEdge[];
+  };
+  if (nodes.length === 0 && edges.length === 0) return "";
+
+  const lines: string[] = [`Canvas: ${nodes.length} nodes, ${edges.length} relationships`];
+
+  // Node labels with counts and up to 5 example display names
+  const labelMap = new Map<string, string[]>();
+  for (const node of nodes) {
+    for (const label of node.labels) {
+      const names = labelMap.get(label) ?? [];
+      const displayName =
+        (node.properties.name as string) ??
+        (node.properties.title as string) ??
+        node.id;
+      if (names.length < 5) names.push(displayName);
+      labelMap.set(label, names);
+    }
+  }
+  for (const [label, names] of labelMap) {
+    const count = nodes.filter((n) => n.labels.includes(label)).length;
+    lines.push(`  :${label} (${count}) — e.g. ${names.join(", ")}`);
+  }
+
+  // Relationship types with counts
+  const typeMap = new Map<string, number>();
+  for (const edge of edges) {
+    typeMap.set(edge.type, (typeMap.get(edge.type) ?? 0) + 1);
+  }
+  for (const [type, count] of typeMap) {
+    lines.push(`  [:${type}] (${count})`);
+  }
+
+  return lines.join("\n");
+}
 
 // ─── Pipeline status indicator ─────────────────────────────────────────────────
 
@@ -91,6 +132,8 @@ export function CopilotPanel() {
   const streamingContent = useStore((s) => s.streamingContent);
   const isStreaming = useStore((s) => s.isStreaming);
   const pipelineStatus = useStore((s) => s.pipelineStatus);
+  const canvasSnapshot = useStore((s) => s.canvasSnapshot);
+  const revertToSnapshot = useStore((s) => s.revertToSnapshot);
 
   // Actions are stable references in Zustand — use individual selectors to avoid
   // creating a new object every render (which would cause an infinite re-render loop).
@@ -139,6 +182,7 @@ export function CopilotPanel() {
           session_id: sessionId!,
           include_graph_context: true,
           model_assignments: useStore.getState().modelAssignments,
+          canvas_summary: buildCanvasSummary() || null,
         },
         {
           onTextChunk: ({ text }) => appendTextChunk(text),
@@ -189,6 +233,14 @@ export function CopilotPanel() {
         )}
         {!sessionId && (
           <span className="ml-2 text-[10px] text-muted-foreground">(no session)</span>
+        )}
+        {canvasSnapshot && !isStreaming && (
+          <button
+            className="ml-auto text-[10px] text-muted-foreground hover:text-foreground"
+            onClick={revertToSnapshot}
+          >
+            Undo canvas change
+          </button>
         )}
         {isStreaming && (
           <button

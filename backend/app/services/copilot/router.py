@@ -33,6 +33,7 @@ class RouterService:
         model: str = "anthropic/claude-3-haiku",
         temperature: float = 0.0,
         max_tokens: int = 256,
+        canvas_summary: str = "",
     ) -> RouterIntent:
         """Classify *query* and return a RouterIntent.
 
@@ -54,7 +55,8 @@ class RouterService:
             return _FALLBACK_INTENT
 
         system_prompt = ROUTER_SYSTEM_PROMPT.format(
-            schema_summary=graph_context_summary or "(schema not available)"
+            schema_summary=graph_context_summary or "(schema not available)",
+            canvas_context=canvas_summary or "(empty canvas)",
         )
 
         messages = [

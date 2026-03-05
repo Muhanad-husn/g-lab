@@ -9,12 +9,19 @@ export interface GraphFilters {
   collapsed_labels: string[];
 }
 
+export interface CanvasSnapshot {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  positions: Record<string, { x: number; y: number }>;
+}
+
 export interface GraphSlice {
   nodes: GraphNode[];
   edges: GraphEdge[];
   /** Cytoscape-managed positions, written back on layout completion / drag. */
   positions: Record<string, { x: number; y: number }>;
   filters: GraphFilters;
+  canvasSnapshot: CanvasSnapshot | null;
 
   addNodes: (nodes: GraphNode[]) => void;
   addEdges: (edges: GraphEdge[]) => void;
@@ -24,6 +31,8 @@ export interface GraphSlice {
   setPositions: (positions: Record<string, { x: number; y: number }>) => void;
   setFilters: (filters: Partial<GraphFilters>) => void;
   clearGraph: () => void;
+  snapshotCanvas: () => void;
+  revertToSnapshot: () => void;
 }
 
 // ─── Slice creator ────────────────────────────────────────────────────────────
@@ -38,6 +47,7 @@ export const createGraphSlice: StateCreator<
   edges: [],
   positions: {},
   filters: { hidden_labels: [], hidden_types: [], collapsed_labels: [] },
+  canvasSnapshot: null,
 
   addNodes: (incoming) =>
     set((state) => {
@@ -83,5 +93,26 @@ export const createGraphSlice: StateCreator<
       edges: [],
       positions: {},
       filters: { hidden_labels: [], hidden_types: [], collapsed_labels: [] },
+      canvasSnapshot: null,
+    }),
+
+  snapshotCanvas: () =>
+    set((state) => ({
+      canvasSnapshot: {
+        nodes: [...state.nodes],
+        edges: [...state.edges],
+        positions: { ...state.positions },
+      },
+    })),
+
+  revertToSnapshot: () =>
+    set((state) => {
+      if (!state.canvasSnapshot) return {};
+      return {
+        nodes: state.canvasSnapshot.nodes,
+        edges: state.canvasSnapshot.edges,
+        positions: state.canvasSnapshot.positions,
+        canvasSnapshot: null,
+      };
     }),
 });
