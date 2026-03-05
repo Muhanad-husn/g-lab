@@ -173,7 +173,8 @@ class IngestionService:
         )
 
         return DocumentUploadResponse(
-            document=doc,
+            document_id=doc.id,
+            filename=doc.filename,
             parse_tier=parse_result.parse_tier,
             chunk_count=len(chunks),
         )

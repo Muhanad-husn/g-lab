@@ -313,7 +313,7 @@ export interface ModelInfo {
 // ─── Phase 3: Document Libraries ──────────────────────────────────────────────
 // Source of truth: docs/ARCHITECTURE.md §14 / backend DocumentLibraryResponse
 
-export type ParseTier = "high" | "standard" | "basic";
+export type ParseTier = "high" | "standard" | "basic" | "pending";
 
 export interface DocumentLibrary {
   id: string;

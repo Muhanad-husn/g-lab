@@ -10,6 +10,7 @@ const PARSE_TIER_VARIANT: Record<ParseTier, "default" | "secondary" | "outline">
   high: "default",
   standard: "secondary",
   basic: "outline",
+  pending: "outline",
 };
 
 function ParseTierBadge({ tier }: { tier: ParseTier }) {

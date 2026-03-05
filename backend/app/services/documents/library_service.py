@@ -261,7 +261,8 @@ class LibraryService:
     @staticmethod
     def _doc_to_upload_response(row: Document) -> DocumentUploadResponse:
         return DocumentUploadResponse(
-            document=LibraryService._doc_to_response(row),
+            document_id=row.id,
+            filename=row.filename,
             parse_tier=row.parse_tier,
             chunk_count=row.chunk_count,
         )

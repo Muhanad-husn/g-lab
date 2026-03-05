@@ -6,6 +6,7 @@ All endpoints are prefixed with /api/v1/documents (set in main.py).
 from __future__ import annotations
 
 import hashlib
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
@@ -13,6 +14,8 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import Response
 
+from app.config import get_settings
+from app.core.logging import get_logger
 from app.dependencies import (
     get_action_logger,
     get_chromadb,
@@ -28,6 +31,7 @@ from app.models.schemas import (
 from app.services.action_log import ActionLogger
 from app.services.documents.chromadb_client import ChromaDBClient
 from app.services.documents.embeddings import EmbeddingService
+from app.services.documents.ingestion import IngestionError, IngestionService
 from app.services.documents.library_service import LibraryService
 from app.services.guardrails import GuardrailService
 from app.utils.response import envelope, error_response
@@ -38,6 +42,15 @@ _svc = LibraryService()
 # Placeholder session_id for library-level actions (not tied to a session)
 _SYSTEM_SESSION = "system"
 _guardrails = GuardrailService()
+logger: Any = get_logger(__name__)
+
+
+def _uploads_dir(library_id: str) -> Path:
+    """Return the upload directory for a library, creating it if needed."""
+    settings = get_settings()
+    d = settings.GLAB_DATA_DIR / "uploads" / library_id
+    d.mkdir(parents=True, exist_ok=True)
+    return d
 
 
 # ---------------------------------------------------------------------------
@@ -135,6 +148,7 @@ async def upload_documents(
 
     results: list[dict[str, Any]] = []
     doc_count_offset = library.doc_count
+    upload_dir = _uploads_dir(library_id)
 
     for file in files:
         content = await file.read()
@@ -160,10 +174,15 @@ async def upload_documents(
             library_id=library_id,
             filename=filename,
             file_hash=file_hash,
-            parse_tier="basic",
+            parse_tier="pending",
             chunk_count=0,
         )
         doc_count_offset += 1
+
+        # Save file to disk for later ingestion
+        ext = Path(filename).suffix or ".bin"
+        file_path = upload_dir / f"{doc.id}{ext}"
+        file_path.write_bytes(content)
 
         background_tasks.add_task(
             action_logger.log,
@@ -188,6 +207,118 @@ async def upload_documents(
         )
 
     return envelope(results)
+
+
+@router.get("/libraries/{library_id}/docs")
+async def list_documents(
+    library_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """List all documents in a library."""
+    library = await _svc.get(db, library_id)
+    if library is None:
+        raise HTTPException(status_code=404, detail="Library not found")
+    docs = await _svc.list_documents(db, library_id)
+    return envelope([d.model_dump() for d in docs])
+
+
+@router.post(
+    "/libraries/{library_id}/docs/{doc_id}/ingest",
+    status_code=200,
+    response_model=None,
+)
+async def ingest_document(
+    library_id: str,
+    doc_id: str,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    chromadb_client: ChromaDBClient | None = Depends(get_chromadb),
+    embedding_service: EmbeddingService | None = Depends(get_embedding_service),
+    action_logger: ActionLogger = Depends(get_action_logger),
+) -> dict[str, Any] | Response:
+    """Trigger ingestion for an uploaded document.
+
+    Runs the tiered parsing pipeline (Docling -> Unstructured -> Raw),
+    chunks the result, embeds, and stores in ChromaDB.
+    """
+    if chromadb_client is None or not chromadb_client.is_connected():
+        return JSONResponse(
+            status_code=503,
+            content=error_response(
+                code="VECTOR_STORE_UNAVAILABLE",
+                message="ChromaDB is not connected. Cannot ingest.",
+            ),
+        )
+    if embedding_service is None:
+        return JSONResponse(
+            status_code=503,
+            content=error_response(
+                code="EMBEDDING_SERVICE_UNAVAILABLE",
+                message="Embedding service is not available. Cannot ingest.",
+            ),
+        )
+
+    # Find the document record
+    docs = await _svc.list_documents(db, library_id)
+    doc = next((d for d in docs if d.id == doc_id), None)
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    # Find the file on disk
+    upload_dir = _uploads_dir(library_id)
+    ext = Path(doc.filename).suffix or ".bin"
+    file_path = upload_dir / f"{doc_id}{ext}"
+    if not file_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Uploaded file not found on disk. Please re-upload.",
+        )
+
+    # Determine MIME type from extension
+    mime_map = {
+        ".pdf": "application/pdf",
+        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    }
+    mime_type = mime_map.get(ext.lower(), "application/octet-stream")
+
+    # Run ingestion
+    ingestion_svc = IngestionService(
+        chromadb_client=chromadb_client,
+        embedding_service=embedding_service,
+        library_svc=_svc,
+    )
+    try:
+        result = await ingestion_svc.ingest(
+            db=db,
+            library_id=library_id,
+            file_path=file_path,
+            filename=doc.filename,
+            mime_type=mime_type,
+        )
+    except IngestionError as exc:
+        logger.error("ingestion_failed", doc_id=doc_id, error=str(exc))
+        return JSONResponse(
+            status_code=422,
+            content=error_response(
+                code="INGESTION_FAILED",
+                message=str(exc),
+            ),
+        )
+
+    background_tasks.add_task(
+        action_logger.log,
+        session_id=_SYSTEM_SESSION,
+        action_type=ActionType.DOC_UPLOAD,
+        actor="system",
+        payload={
+            "library_id": library_id,
+            "doc_id": result.document_id,
+            "parse_tier": result.parse_tier,
+            "chunk_count": result.chunk_count,
+        },
+    )
+
+    return envelope(result.model_dump())
 
 
 @router.delete("/libraries/{library_id}/docs/{doc_id}")

@@ -1,6 +1,7 @@
 import { API_BASE } from "@/lib/constants";
 import type { ApiError, ApiResponse } from "@/lib/types";
 import type {
+  DocumentInfo,
   DocumentLibrary,
   DocumentUploadResponse,
   LibraryAttachRequest,
@@ -48,6 +49,26 @@ export async function uploadDocuments(
   }
 
   return (json as ApiResponse<DocumentUploadResponse[]>).data;
+}
+
+export async function listDocuments(
+  libraryId: string,
+): Promise<DocumentInfo[]> {
+  const { data } = await get<DocumentInfo[]>(
+    `/documents/libraries/${libraryId}/docs`,
+  );
+  return data;
+}
+
+export async function ingestDocument(
+  libraryId: string,
+  docId: string,
+): Promise<DocumentUploadResponse> {
+  const { data } = await post<DocumentUploadResponse>(
+    `/documents/libraries/${libraryId}/docs/${docId}/ingest`,
+    {},
+  );
+  return data;
 }
 
 export async function removeDocument(

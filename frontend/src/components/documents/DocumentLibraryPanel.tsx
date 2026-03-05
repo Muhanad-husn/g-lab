@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   BookOpen,
   ChevronDown,
   ChevronRight,
+  FileText,
   Link,
   Link2Off,
+  Loader2,
+  Play,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -16,7 +19,7 @@ import { useStore } from "@/store";
 import { useDocumentActions } from "@/hooks/useDocumentActions";
 import { DocumentUpload } from "./DocumentUpload";
 import { PARSE_QUALITY_TIERS } from "@/lib/constants";
-import type { DocumentLibrary, ParseTier } from "@/lib/types";
+import type { DocumentInfo, DocumentLibrary, ParseTier } from "@/lib/types";
 
 // ─── Parse quality badge ──────────────────────────────────────────────────────
 
@@ -24,6 +27,7 @@ const TIER_VARIANT: Record<ParseTier, "default" | "secondary" | "outline"> = {
   high: "default",
   standard: "secondary",
   basic: "outline",
+  pending: "outline",
 };
 
 function ParseQualityBadge({ tier }: { tier: ParseTier | null }) {
@@ -81,6 +85,81 @@ function ConfirmDelete({ name, onConfirm, onCancel }: ConfirmDeleteProps) {
   );
 }
 
+// ─── Document row with ingest button ─────────────────────────────────────────
+
+interface DocumentRowProps {
+  doc: DocumentInfo;
+  libraryId: string;
+}
+
+function DocumentRow({ doc, libraryId }: DocumentRowProps) {
+  const { ingestDocument, removeDocument, fetchLibraries } =
+    useDocumentActions();
+  const [ingesting, setIngesting] = useState(false);
+  const [tier, setTier] = useState(doc.parse_tier);
+  const [chunks, setChunks] = useState(doc.chunk_count);
+
+  const isPending = tier === "pending";
+
+  async function handleIngest() {
+    setIngesting(true);
+    const result = await ingestDocument(libraryId, doc.id);
+    setIngesting(false);
+    if (result) {
+      setTier(result.parse_tier as ParseTier);
+      setChunks(result.chunk_count);
+    }
+  }
+
+  async function handleRemove() {
+    await removeDocument(libraryId, doc.id);
+    await fetchLibraries();
+  }
+
+  return (
+    <div className="flex items-center gap-1.5 px-2 py-1.5 text-xs border-b border-border/50 last:border-0">
+      <FileText className="h-3 w-3 shrink-0 text-muted-foreground" />
+      <span className="truncate flex-1 text-foreground">{doc.filename}</span>
+      {isPending ? (
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-5 px-1.5 text-[10px] gap-0.5"
+          onClick={handleIngest}
+          disabled={ingesting}
+        >
+          {ingesting ? (
+            <>
+              <Loader2 className="h-2.5 w-2.5 animate-spin" />
+              Ingesting…
+            </>
+          ) : (
+            <>
+              <Play className="h-2.5 w-2.5" />
+              Ingest
+            </>
+          )}
+        </Button>
+      ) : (
+        <>
+          <ParseQualityBadge tier={tier as ParseTier} />
+          <span className="text-[10px] text-muted-foreground shrink-0">
+            {chunks} chunks
+          </span>
+        </>
+      )}
+      <button
+        className="shrink-0 p-0.5 rounded text-muted-foreground hover:text-destructive transition-colors"
+        title="Remove document"
+        onClick={handleRemove}
+        aria-label="Remove document"
+      >
+        <Trash2 className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
 // ─── Library row ──────────────────────────────────────────────────────────────
 
 interface LibraryRowProps {
@@ -100,6 +179,15 @@ function LibraryRow({
 }: LibraryRowProps) {
   const [expanded, setExpanded] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [docs, setDocs] = useState<DocumentInfo[]>([]);
+  const { listDocuments: fetchDocs } = useDocumentActions();
+
+  useEffect(() => {
+    if (expanded) {
+      void fetchDocs(library.id).then(setDocs);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded, library.doc_count]);
 
   return (
     <div className="border-b border-border last:border-0">
@@ -194,10 +282,25 @@ function LibraryRow({
         </div>
       )}
 
-      {/* Expanded: upload section */}
+      {/* Expanded: document list + upload section */}
       {expanded && !confirmDelete && (
-        <div className="px-3 pb-3 bg-muted/10">
-          <DocumentUpload libraryId={library.id} />
+        <div className="bg-muted/10">
+          {/* Existing documents */}
+          {docs.length > 0 && (
+            <div className="px-3 pt-1">
+              {docs.map((doc) => (
+                <DocumentRow
+                  key={doc.id}
+                  doc={doc}
+                  libraryId={library.id}
+                />
+              ))}
+            </div>
+          )}
+          {/* Upload zone */}
+          <div className="px-3 pb-3 pt-2">
+            <DocumentUpload libraryId={library.id} />
+          </div>
         </div>
       )}
     </div>

@@ -77,4 +77,5 @@ export const PARSE_QUALITY_TIERS = {
   high: { label: "High", description: "Structured extraction (Docling)" },
   standard: { label: "Standard", description: "General extraction (Unstructured)" },
   basic: { label: "Basic", description: "Raw text fallback" },
+  pending: { label: "Pending", description: "Awaiting ingestion" },
 } as const;

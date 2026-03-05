@@ -3,13 +3,15 @@ import {
   createLibrary,
   deleteLibrary,
   detachLibrary,
+  ingestDocument,
+  listDocuments,
   listLibraries,
   removeDocument,
   uploadDocuments,
 } from "@/api/documents";
 import { useStore } from "@/store";
 import { MAX_DOC_UPLOAD_SIZE_MB } from "@/lib/constants";
-import type { DocumentUploadResponse } from "@/lib/types";
+import type { DocumentInfo, DocumentUploadResponse } from "@/lib/types";
 
 // ─── useDocumentActions ───────────────────────────────────────────────────────
 
@@ -105,6 +107,33 @@ export function useDocumentActions() {
     }
   }
 
+  async function handleListDocuments(
+    libraryId: string,
+  ): Promise<DocumentInfo[]> {
+    try {
+      return await listDocuments(libraryId);
+    } catch {
+      pushError("Failed to load documents.");
+      return [];
+    }
+  }
+
+  async function handleIngestDocument(
+    libraryId: string,
+    docId: string,
+  ): Promise<DocumentUploadResponse | null> {
+    try {
+      const result = await ingestDocument(libraryId, docId);
+      await fetchLibraries();
+      return result;
+    } catch (err) {
+      pushError(
+        err instanceof Error ? err.message : "Ingestion failed.",
+      );
+      return null;
+    }
+  }
+
   async function handleAttachLibrary(libraryId: string): Promise<boolean> {
     if (!session) {
       pushError("No active session to attach the library to.");
@@ -141,6 +170,8 @@ export function useDocumentActions() {
     deleteLibrary: handleDeleteLibrary,
     uploadFiles: handleUploadFiles,
     removeDocument: handleRemoveDocument,
+    listDocuments: handleListDocuments,
+    ingestDocument: handleIngestDocument,
     attachLibrary: handleAttachLibrary,
     detachLibrary: handleDetachLibrary,
   };
