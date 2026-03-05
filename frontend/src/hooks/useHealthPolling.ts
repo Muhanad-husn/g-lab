@@ -16,7 +16,11 @@
 import { useCallback, useEffect, useRef } from "react";
 
 import { useStore } from "@/store";
-import type { CopilotStatus, Neo4jConnectionStatus } from "@/store/monitoringSlice";
+import type {
+  CopilotStatus,
+  Neo4jConnectionStatus,
+  VectorStoreStatus,
+} from "@/store/monitoringSlice";
 
 const POLL_INTERVAL_MS = 30_000;
 
@@ -25,12 +29,14 @@ interface HealthResponse {
     status: string;
     neo4j: Neo4jConnectionStatus;
     copilot?: CopilotStatus;
+    vector_store?: VectorStoreStatus;
   };
 }
 
 export function useHealthPolling(): void {
   const setNeo4jStatus = useStore((s) => s.setNeo4jStatus);
   const setCopilotStatus = useStore((s) => s.setCopilotStatus);
+  const setVectorStoreStatus = useStore((s) => s.setVectorStoreStatus);
   const addToast = useStore((s) => s.addToast);
   const prevStatusRef = useRef<Neo4jConnectionStatus>("unknown");
 
@@ -44,10 +50,11 @@ export function useHealthPolling(): void {
       const body: HealthResponse = await res.json();
       handleTransition(body.data.neo4j ?? "unknown");
       setCopilotStatus(body.data.copilot ?? "unknown");
+      setVectorStoreStatus(body.data.vector_store ?? "unknown");
     } catch {
       handleTransition("disconnected");
     }
-  }, [setCopilotStatus]);
+  }, [setCopilotStatus, setVectorStoreStatus]);
 
   function handleTransition(next: Neo4jConnectionStatus): void {
     const prev = prevStatusRef.current;
