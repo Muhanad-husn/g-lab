@@ -3,6 +3,7 @@ import { useStore } from "@/store";
 import { useSSE } from "@/hooks/useSSE";
 import { useReadOnlyMode } from "@/hooks/useReadOnlyMode";
 import { ConfidenceBadge } from "./ConfidenceBadge";
+import { getDisplayLabel } from "@/components/canvas/cytoscapeStyles";
 import { API_BASE } from "@/lib/constants";
 import type { CopilotMessage, GraphNode, GraphEdge } from "@/lib/types";
 
@@ -22,10 +23,7 @@ function buildCanvasSummary(): string {
   for (const node of nodes) {
     for (const label of node.labels) {
       const names = labelMap.get(label) ?? [];
-      const displayName =
-        (node.properties.name as string) ??
-        (node.properties.title as string) ??
-        node.id;
+      const displayName = getDisplayLabel(node.properties, node.labels);
       if (names.length < 5) names.push(displayName);
       labelMap.set(label, names);
     }
@@ -42,6 +40,25 @@ function buildCanvasSummary(): string {
   }
   for (const [type, count] of typeMap) {
     lines.push(`  [:${type}] (${count})`);
+  }
+
+  // Specific edge connections (up to 30) so the LLM knows who connects to whom
+  const nodeNameMap = new Map<string, string>();
+  for (const node of nodes) {
+    nodeNameMap.set(node.id, getDisplayLabel(node.properties, node.labels));
+  }
+  const edgeLimit = Math.min(edges.length, 30);
+  if (edgeLimit > 0) {
+    lines.push("Connections:");
+    for (let i = 0; i < edgeLimit; i++) {
+      const e = edges[i];
+      const src = nodeNameMap.get(e.source) ?? e.source;
+      const tgt = nodeNameMap.get(e.target) ?? e.target;
+      lines.push(`  ${src} -[:${e.type}]-> ${tgt}`);
+    }
+    if (edges.length > 30) {
+      lines.push(`  ... and ${edges.length - 30} more`);
+    }
   }
 
   return lines.join("\n");

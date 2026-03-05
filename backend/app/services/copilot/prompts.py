@@ -26,6 +26,9 @@ Rules:
   documents (legislation, reports, entity registries).
 - "cypher_hint" is an optional partial Cypher sketch (MATCH clause only,
   no WRITE operations) to guide graph retrieval.  Null if not helpful.
+  For questions about how two entities are connected or the shortest path
+  between them, use shortestPath or allShortestPaths in the hint, e.g.:
+  "MATCH p = shortestPath((a)-[*..5]-(b)) WHERE a.name CONTAINS 'X' AND b.name CONTAINS 'Y' RETURN p"
 - "doc_query" is a short rephrasing of the user query optimised for
   document search.  Null when needs_docs is false.
 - When in doubt, set needs_graph=true.
@@ -35,6 +38,23 @@ Graph schema summary:
 
 Canvas context (nodes/edges currently visible on the investigation canvas):
 {canvas_context}
+"""
+
+# ---------------------------------------------------------------------------
+# Entity extraction — pull entity names from user query
+# ---------------------------------------------------------------------------
+
+ENTITY_EXTRACTION_PROMPT = """\
+Extract entity names (people, organizations, locations, events) from the
+user's question. Return a JSON array of strings — just the names, nothing
+else. If no entities are found, return an empty array [].
+
+Examples:
+  "how are Sophia and Jan Visser connected?" → ["Sophia", "Jan Visser"]
+  "show me all companies linked to Redwood" → ["Redwood"]
+  "what happened on 2024-09-15?" → []
+
+Return ONLY the JSON array, no markdown, no explanation.
 """
 
 # ---------------------------------------------------------------------------
@@ -52,15 +72,33 @@ Constraints (HARD):
 - No semicolons; no CALL {{}} (sub-query form).
 - LIMIT the result to at most 50 rows.
 - Return only the Cypher query — no explanation, no markdown.
+- When the user mentions names or values, use WHERE clauses to match
+  against node properties (e.g. WHERE n.name CONTAINS 'value').
+  Use the property keys listed in the schema below.
+
+Query patterns:
+- For "how are X and Y connected" or path questions, use shortestPath:
+  MATCH (a), (b) WHERE a.name CONTAINS 'X' AND b.name CONTAINS 'Y'
+  MATCH p = shortestPath((a)-[*..5]-(b)) RETURN p
+- For neighbourhood exploration, use variable-length paths with LIMIT.
+- Always try to match names case-insensitively (use toLower() or CONTAINS).
 
 Graph schema:
 {schema_summary}
+
+Resolved entities (searched in the database — use these exact names/IDs):
+{resolved_entities}
+When resolved entities are available, use their exact property values in
+WHERE clauses instead of guessing. If elementId values are provided, prefer
+matching by elementId(n) for precision.
 
 Routing hint from previous step: {cypher_hint}
 
 Canvas context (what the investigator is currently looking at):
 {canvas_context}
-Prefer queries that complement what is already on the canvas rather than re-fetching it.
+If the canvas is empty, write a query that directly answers the user's question.
+If the canvas has relevant nodes, prefer queries that complement
+existing data rather than re-fetching it.
 """
 
 GRAPH_RETRIEVAL_RETRY_PROMPT = """\
@@ -121,14 +159,26 @@ Scoring guide:
   medium (0.40–0.74) — partial evidence, some inference.
   low    (0.00–0.39) — weak or no evidence; speculative.
 
-Be concise.  Do not hallucinate node IDs or relationship types not present
-in the provided graph results.  When citing document chunks include the
-filename, page number, and chunk index in the evidence content field.
-
-Canvas context (nodes/edges the investigator currently has):
+Canvas context (nodes/edges the investigator currently has visible — this is
+real data from the graph, usable as evidence alongside query results):
 {canvas_context}
-Reference visible entities when relevant and suggest graph_delta
-that complements the canvas.
+
+When answering:
+- Use ALL available evidence: graph query results, canvas context, and
+  document context. The canvas shows confirmed graph data.
+- If the canvas already shows a path or connection that answers the
+  question, reference it directly — do not say "no evidence found".
+- Narrate connections naturally. When describing how entities are related,
+  trace the path step by step and name the intermediate nodes and
+  relationship types. For example: "A works for B, which is a supplier
+  to C" is better than "A is connected to C through a direct relationship".
+- Provide enough detail for the investigator to understand the full picture.
+  Enumerate distinct paths when there are multiple connections.
+- Suggest graph_delta that complements the canvas.
+- Do not hallucinate node IDs or relationship types not present in the
+  provided data.
+- When citing document chunks include the filename, page number, and chunk
+  index in the evidence content field.
 
 Graph results:
 {graph_results}

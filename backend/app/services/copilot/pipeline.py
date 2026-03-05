@@ -216,6 +216,7 @@ class CopilotPipeline:
             temperature=0.0,
             max_tokens=retrieval_tokens,
             canvas_summary=canvas_summary,
+            query=request.query,
         )
         doc_coro = (
             doc_role.retrieve(
@@ -283,6 +284,7 @@ class CopilotPipeline:
                 temperature=0.3,  # more exploratory
                 max_tokens=retrieval_tokens,
                 canvas_summary=canvas_summary,
+                query=request.query,
             )
             # Increase doc top-k by 5 on re-retrieval
             re_doc_coro = (
@@ -344,7 +346,7 @@ def format_schema_summary(schema: dict[str, Any]) -> str:
     if labels:
         parts.append("Node labels:")
         for info in labels:
-            label = info.get("label", "?")
+            label = info.get("name") or info.get("label", "?")
             count = info.get("count")
             props = info.get("property_keys") or []
             count_str = f" ({count} nodes)" if count is not None else ""
@@ -355,7 +357,7 @@ def format_schema_summary(schema: dict[str, Any]) -> str:
     if rel_types:
         parts.append("Relationship types:")
         for info in rel_types:
-            rel_type = info.get("type", "?")
+            rel_type = info.get("name") or info.get("type", "?")
             count = info.get("count")
             props = info.get("property_keys") or []
             count_str = f" ({count} rels)" if count is not None else ""
