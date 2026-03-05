@@ -1,5 +1,7 @@
 import { useRef, useState } from "react";
 import { Download, Pencil, Plug, Settings, Upload } from "lucide-react";
+import iconDark from "@/assets/icon-dark.svg";
+import iconLight from "@/assets/icon-light.svg";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -881,6 +883,8 @@ export function Toolbar() {
       <header className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-card px-3 gap-3">
         {/* Left: brand + editable session name */}
         <div className="flex items-center gap-2 min-w-0">
+          <img src={iconLight} alt="G-Lab" className="h-6 w-6 dark:hidden" />
+          <img src={iconDark} alt="G-Lab" className="h-6 w-6 hidden dark:block" />
           <span className="text-sm font-semibold text-foreground select-none">
             G-Lab
           </span>

@@ -1,6 +1,12 @@
-# G-Lab
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="logos/logo.svg" />
+    <source media="(prefers-color-scheme: light)" srcset="logos/logo-light.svg" />
+    <img alt="G-Lab" src="logos/logo.svg" width="420" />
+  </picture>
+</p>
 
-**The graph investigation workbench that puts the power back in your hands.**
+<p align="center"><strong>The graph investigation workbench that puts the power back in your hands.</strong></p>
 
 G-Lab is a self-hosted, privacy-first environment for exploring graph databases — built for the people who dig into data that matters. Connect your Neo4j instance, pull threads on the canvas, and let the AI Copilot surface what you'd miss. Upload your own documents and watch the system cross-reference graph evidence with your source material in real time.
 
