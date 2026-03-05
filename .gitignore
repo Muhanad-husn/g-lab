@@ -17,6 +17,7 @@ ENV/
 
 # Claude Code (local permission overrides — machine-specific)
 .claude/settings.local.json
+.claude/skills/LOGO_DESIGNER.md
 
 # IDE
 .vscode/
