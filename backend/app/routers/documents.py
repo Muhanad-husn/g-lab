@@ -14,13 +14,13 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import Response
 
-from app.config import get_settings
 from app.core.logging import get_logger
 from app.dependencies import (
     get_action_logger,
     get_chromadb,
     get_db,
     get_embedding_service,
+    get_settings,
 )
 from app.models.enums import ActionType
 from app.models.schemas import (
