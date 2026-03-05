@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Download, Pencil, Settings, Upload } from "lucide-react";
+import { Download, Pencil, Plug, Settings, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,6 +14,11 @@ import {
   createPreset,
   deletePreset,
 } from "@/api/config";
+import {
+  getCredentials,
+  updateCredentials,
+  type CredentialsUpdate,
+} from "@/api/credentials";
 import { useStore } from "@/store";
 import { PRESETS, type PresetName } from "@/lib/constants";
 import type { PresetConfig, PresetResponse } from "@/lib/types";
@@ -120,6 +125,180 @@ function CopilotStatusDot() {
         {label}
       </span>
     </span>
+  );
+}
+
+// ─── Credentials dialog ───────────────────────────────────────────────────────
+
+interface CredentialsDialogProps {
+  open: boolean;
+  onClose: () => void;
+}
+
+function CredentialsDialog({ open, onClose }: CredentialsDialogProps) {
+  const addToast = useStore((s) => s.addToast);
+
+  const [neo4jUri, setNeo4jUri] = useState("");
+  const [neo4jUser, setNeo4jUser] = useState("");
+  const [neo4jPassword, setNeo4jPassword] = useState("");
+  const [openrouterKey, setOpenrouterKey] = useState("");
+  const [origUri, setOrigUri] = useState("");
+  const [origUser, setOrigUser] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  async function handleOpen() {
+    setLoading(true);
+    try {
+      const status = await getCredentials();
+      setNeo4jUri(status.neo4j_uri);
+      setNeo4jUser(status.neo4j_user);
+      setOrigUri(status.neo4j_uri);
+      setOrigUser(status.neo4j_user);
+      setNeo4jPassword("");
+      setOpenrouterKey("");
+    } catch {
+      // Start with empty fields if fetch fails
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const update: CredentialsUpdate = {};
+      if (neo4jUri.trim() && neo4jUri !== origUri) update.neo4j_uri = neo4jUri.trim();
+      if (neo4jUser.trim() && neo4jUser !== origUser) update.neo4j_user = neo4jUser.trim();
+      if (neo4jPassword) update.neo4j_password = neo4jPassword;
+      if (openrouterKey.trim()) update.openrouter_api_key = openrouterKey.trim();
+
+      if (Object.keys(update).length === 0) {
+        onClose();
+        return;
+      }
+
+      const status = await updateCredentials(update);
+      const neo4jOk = status.neo4j_connected;
+      const orOk = status.openrouter_configured;
+
+      addToast({
+        level: neo4jOk || orOk ? "success" : "error",
+        title: "Credentials updated",
+        message: [
+          neo4jOk ? "Neo4j connected" : "Neo4j not connected",
+          orOk ? "Copilot ready" : "Copilot not configured",
+        ].join(" · "),
+        duration: 5000,
+      });
+      onClose();
+    } catch (err) {
+      addToast({
+        level: "error",
+        title: "Failed to update credentials",
+        message: err instanceof Error ? err.message : "Unknown error",
+        duration: 5000,
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleOpenChange(isOpen: boolean) {
+    if (isOpen) {
+      void handleOpen();
+    } else {
+      onClose();
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Connection Settings</DialogTitle>
+        </DialogHeader>
+
+        {loading ? (
+          <div className="py-6 text-center text-xs text-muted-foreground">
+            Loading…
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4 py-2">
+            {/* Neo4j */}
+            <div className="flex flex-col gap-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Neo4j
+              </p>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-foreground">URI</span>
+                <Input
+                  value={neo4jUri}
+                  onChange={(e) => setNeo4jUri(e.target.value)}
+                  placeholder="bolt://localhost:7687"
+                  className="h-7 text-xs font-mono"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-foreground">Username</span>
+                <Input
+                  value={neo4jUser}
+                  onChange={(e) => setNeo4jUser(e.target.value)}
+                  placeholder="neo4j"
+                  className="h-7 text-xs"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-foreground">
+                  Password{" "}
+                  <span className="text-muted-foreground font-normal">
+                    (leave blank to keep current)
+                  </span>
+                </span>
+                <Input
+                  type="password"
+                  value={neo4jPassword}
+                  onChange={(e) => setNeo4jPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="h-7 text-xs"
+                />
+              </label>
+            </div>
+
+            {/* OpenRouter */}
+            <div className="flex flex-col gap-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                OpenRouter
+              </p>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-foreground">
+                  API Key{" "}
+                  <span className="text-muted-foreground font-normal">
+                    (leave blank to keep current)
+                  </span>
+                </span>
+                <Input
+                  type="password"
+                  value={openrouterKey}
+                  onChange={(e) => setOpenrouterKey(e.target.value)}
+                  placeholder="sk-or-…"
+                  className="h-7 text-xs font-mono"
+                />
+              </label>
+            </div>
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button size="sm" onClick={() => void handleSave()} disabled={saving || loading}>
+            {saving ? "Connecting…" : "Save & Connect"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -639,6 +818,7 @@ export function Toolbar() {
   const [newSessionOpen, setNewSessionOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [presetsOpen, setPresetsOpen] = useState(false);
+  const [credentialsOpen, setCredentialsOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -710,6 +890,17 @@ export function Toolbar() {
         {/* Right: preset selector + actions + status */}
         <div className="flex items-center gap-2 shrink-0">
           <PresetSelector />
+
+          {/* Connect / credentials */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => setCredentialsOpen(true)}
+            title="Connection settings (Neo4j + OpenRouter)"
+          >
+            <Plug className="h-3.5 w-3.5" />
+          </Button>
 
           {/* Preset manager */}
           <Button
@@ -785,6 +976,10 @@ export function Toolbar() {
       <NewSessionDialog
         open={newSessionOpen}
         onClose={() => setNewSessionOpen(false)}
+      />
+      <CredentialsDialog
+        open={credentialsOpen}
+        onClose={() => setCredentialsOpen(false)}
       />
       <CopilotSettingsDialog
         open={settingsOpen}

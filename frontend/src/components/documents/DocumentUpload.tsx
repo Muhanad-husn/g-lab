@@ -93,11 +93,12 @@ export function DocumentUpload({ libraryId }: DocumentUploadProps) {
       return;
     }
 
-    const ok = await uploadFiles(libraryId, files);
-    if (!ok) {
+    const uploaded = await uploadFiles(libraryId, files);
+    if (uploaded === null) {
       setUploadError("Upload failed. Check the banner for details.");
+    } else {
+      setResults(uploaded);
     }
-    // Results panel is informational only — library stats refresh via fetchLibraries
   }
 
   function onInputChange(e: React.ChangeEvent<HTMLInputElement>) {

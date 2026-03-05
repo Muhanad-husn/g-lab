@@ -8,7 +8,7 @@ from __future__ import annotations
 import hashlib
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import Response
@@ -112,78 +112,82 @@ async def delete_library(
 
 
 @router.post("/libraries/{library_id}/upload", status_code=201, response_model=None)
-async def upload_document(
+async def upload_documents(
     library_id: str,
-    file: UploadFile,
     background_tasks: BackgroundTasks,
+    files: list[UploadFile] = File(default=[]),
     session_id: str | None = Form(default=None),
     db: AsyncSession = Depends(get_db),
     chromadb_client: ChromaDBClient | None = Depends(get_chromadb),
     embedding_service: EmbeddingService | None = Depends(get_embedding_service),
     action_logger: ActionLogger = Depends(get_action_logger),
 ) -> dict[str, Any] | Response:
-    """Upload a document to a library.
+    """Upload one or more documents to a library.
 
     Guardrails: 50 MB max file size, 100 documents per library.
-
-    Note: Full ingestion (parsing, chunking, embedding) is wired in Stage 14.
-    This endpoint validates guardrails, records the document entry, and returns
-    a stub upload response with parse_tier="basic" and chunk_count=0 until the
-    ingestion pipeline is available.
     """
+    if not files:
+        raise HTTPException(status_code=422, detail="No files provided")
+
     library = await _svc.get(db, library_id)
     if library is None:
         raise HTTPException(status_code=404, detail="Library not found")
 
-    # Read file content to check size (UploadFile.size may be None)
-    content = await file.read()
-    file_size = len(content)
+    results: list[dict[str, Any]] = []
+    doc_count_offset = library.doc_count
 
-    # Guardrail: file size + doc count
-    result = _guardrails.check_doc_upload(file_size, library.doc_count)
-    if not result.allowed:
-        return JSONResponse(
-            status_code=400 if "file_size_mb" in (result.detail or {}) else 409,
-            content=error_response(
-                code="GUARDRAIL_EXCEEDED",
-                message="Upload rejected by guardrail",
-                detail=result.detail,
-            ),
+    for file in files:
+        content = await file.read()
+        file_size = len(content)
+
+        # Guardrail: file size + doc count (use running count)
+        guard = _guardrails.check_doc_upload(file_size, doc_count_offset)
+        if not guard.allowed:
+            return JSONResponse(
+                status_code=400 if "file_size_mb" in (guard.detail or {}) else 409,
+                content=error_response(
+                    code="GUARDRAIL_EXCEEDED",
+                    message="Upload rejected by guardrail",
+                    detail=guard.detail,
+                ),
+            )
+
+        file_hash = hashlib.sha256(content).hexdigest()
+        filename = file.filename or "unknown"
+
+        doc = await _svc.add_document(
+            db,
+            library_id=library_id,
+            filename=filename,
+            file_hash=file_hash,
+            parse_tier="basic",
+            chunk_count=0,
+        )
+        doc_count_offset += 1
+
+        background_tasks.add_task(
+            action_logger.log,
+            session_id=session_id or _SYSTEM_SESSION,
+            action_type=ActionType.DOC_UPLOAD,
+            actor="user",
+            payload={
+                "library_id": library_id,
+                "doc_id": doc.id,
+                "filename": filename,
+                "file_size_bytes": file_size,
+            },
         )
 
-    # Compute a simple hash for deduplication
-    file_hash = hashlib.sha256(content).hexdigest()
-    filename = file.filename or "unknown"
+        results.append(
+            DocumentUploadResponse(
+                document_id=doc.id,
+                filename=doc.filename,
+                parse_tier=doc.parse_tier,
+                chunk_count=doc.chunk_count,
+            ).model_dump()
+        )
 
-    # Record in SQLite (ingestion pipeline updates parse_tier + chunk_count in Stage 14)
-    doc = await _svc.add_document(
-        db,
-        library_id=library_id,
-        filename=filename,
-        file_hash=file_hash,
-        parse_tier="basic",
-        chunk_count=0,
-    )
-
-    background_tasks.add_task(
-        action_logger.log,
-        session_id=session_id or _SYSTEM_SESSION,
-        action_type=ActionType.DOC_UPLOAD,
-        actor="user",
-        payload={
-            "library_id": library_id,
-            "doc_id": doc.id,
-            "filename": filename,
-            "file_size_bytes": file_size,
-        },
-    )
-
-    response = DocumentUploadResponse(
-        document=doc,
-        parse_tier=doc.parse_tier,
-        chunk_count=doc.chunk_count,
-    )
-    return envelope(response.model_dump())
+    return envelope(results)
 
 
 @router.delete("/libraries/{library_id}/docs/{doc_id}")

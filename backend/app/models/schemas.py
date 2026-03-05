@@ -296,7 +296,8 @@ class DocumentResponse(BaseModel):
 
 
 class DocumentUploadResponse(BaseModel):
-    document: DocumentResponse
+    document_id: str
+    filename: str
     parse_tier: str
     chunk_count: int
 
@@ -324,3 +325,24 @@ class DocumentChunk(BaseModel):
 class DocumentRetrievalResult(BaseModel):
     chunks: list[DocumentChunk]
     evidence_sources: list[EvidenceSource]
+
+
+# ---------------------------------------------------------------------------
+# Credentials schemas (runtime connection settings)
+# ---------------------------------------------------------------------------
+
+
+class CredentialsUpdate(BaseModel):
+    neo4j_uri: str | None = None
+    neo4j_user: str | None = None
+    neo4j_password: str | None = None
+    openrouter_api_key: str | None = None
+
+
+class CredentialsStatus(BaseModel):
+    neo4j_uri: str
+    neo4j_user: str
+    neo4j_password_set: bool
+    openrouter_api_key_set: bool
+    neo4j_connected: bool
+    openrouter_configured: bool

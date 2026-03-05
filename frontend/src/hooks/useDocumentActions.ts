@@ -9,6 +9,7 @@ import {
 } from "@/api/documents";
 import { useStore } from "@/store";
 import { MAX_DOC_UPLOAD_SIZE_MB } from "@/lib/constants";
+import type { DocumentUploadResponse } from "@/lib/types";
 
 // ─── useDocumentActions ───────────────────────────────────────────────────────
 
@@ -65,7 +66,7 @@ export function useDocumentActions() {
   async function handleUploadFiles(
     libraryId: string,
     files: File[],
-  ): Promise<boolean> {
+  ): Promise<DocumentUploadResponse[] | null> {
     const oversized = files.filter(
       (f) => f.size > MAX_DOC_UPLOAD_SIZE_MB * 1024 * 1024,
     );
@@ -73,18 +74,18 @@ export function useDocumentActions() {
       pushError(
         `${oversized[0].name} exceeds the ${MAX_DOC_UPLOAD_SIZE_MB} MB limit.`,
       );
-      return false;
+      return null;
     }
 
     startUpload();
     try {
-      await uploadDocuments(libraryId, files);
+      const results = await uploadDocuments(libraryId, files);
       // Refresh library list to get updated counts
       await fetchLibraries();
-      return true;
+      return results;
     } catch (err) {
       pushError(err instanceof Error ? err.message : "Upload failed.");
-      return false;
+      return null;
     } finally {
       finishUpload();
     }
