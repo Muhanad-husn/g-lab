@@ -111,15 +111,15 @@ async def test_full_flow_happy_path():
 
     event_types = [e.event for e in events]
     assert event_types[0] == "status"
-    assert events[0].data["status"] == "routing"
+    assert events[0].data["stage"] == "routing"
     assert event_types[1] == "status"
-    assert events[1].data["status"] == "retrieving"
+    assert events[1].data["stage"] == "retrieving"
     # Then the synthesiser events (text_chunk, evidence, confidence, done)
     assert "text_chunk" in event_types
     assert "confidence" in event_types
     assert event_types[-1] == "done"
     # No re_retrieving
-    statuses = [e.data["status"] for e in events if e.event == "status"]
+    statuses = [e.data["stage"] for e in events if e.event == "status"]
     assert "re_retrieving" not in statuses
 
 
@@ -175,7 +175,7 @@ async def test_re_retrieval_on_low_confidence():
             semaphore=_make_semaphore(),
         )
 
-    statuses = [e.data["status"] for e in events if e.event == "status"]
+    statuses = [e.data["stage"] for e in events if e.event == "status"]
     assert "re_retrieving" in statuses
     # First-pass low-confidence events should NOT appear
     all_text = " ".join(

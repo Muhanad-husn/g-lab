@@ -110,6 +110,9 @@ def _chunks_to_evidence(chunks: list[DocumentChunk]) -> list[EvidenceSource]:
                 type="doc_chunk",
                 id=chunk.id,
                 content=" ".join(content_parts),
+                page_number=meta.page_number,
+                section_heading=meta.section_heading,
+                parse_tier=meta.parse_tier,
             )
         )
     return sources

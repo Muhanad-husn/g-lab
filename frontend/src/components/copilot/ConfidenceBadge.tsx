@@ -3,6 +3,7 @@ import type { ConfidenceScore } from "@/lib/types";
 
 interface ConfidenceBadgeProps {
   confidence: ConfidenceScore;
+  hasDocEvidence?: boolean;
 }
 
 const BAND_STYLES: Record<ConfidenceScore["band"], string> = {
@@ -17,16 +18,19 @@ const BAND_DESCRIPTIONS: Record<ConfidenceScore["band"], string> = {
   low: `Low confidence (<${CONFIDENCE_BANDS.MEDIUM.threshold * 100}%) — limited graph evidence; treat with caution.`,
 };
 
-export function ConfidenceBadge({ confidence }: ConfidenceBadgeProps) {
+export function ConfidenceBadge({ confidence, hasDocEvidence }: ConfidenceBadgeProps) {
   const label = CONFIDENCE_BANDS[confidence.band.toUpperCase() as keyof typeof CONFIDENCE_BANDS]?.label ?? confidence.band;
   const pct = Math.round(confidence.score * 100);
+  const tooltip = hasDocEvidence
+    ? `${BAND_DESCRIPTIONS[confidence.band]} Document-grounded.`
+    : BAND_DESCRIPTIONS[confidence.band];
 
   return (
     <span
       className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] font-medium ${BAND_STYLES[confidence.band]}`}
-      title={BAND_DESCRIPTIONS[confidence.band]}
+      title={tooltip}
     >
-      {label} {pct}%
+      {label} {pct}%{hasDocEvidence && <span className="opacity-60">📄</span>}
     </span>
   );
 }

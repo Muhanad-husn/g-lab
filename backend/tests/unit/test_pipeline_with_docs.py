@@ -137,7 +137,7 @@ async def test_pipeline_with_doc_retrieval(
     assert "done" in event_types
     # Status events should include retrieving
     assert any(
-        e.event == "status" and isinstance(e.data, dict) and e.data.get("status") == "retrieving"
+        e.event == "status" and isinstance(e.data, dict) and e.data.get("stage") == "retrieving"
         for e in events
     )
 
@@ -239,7 +239,7 @@ async def test_pipeline_reretrieval_increases_doc_top_k(
     assert any(
         e.event == "status"
         and isinstance(e.data, dict)
-        and e.data.get("status") == "re_retrieving"
+        and e.data.get("stage") == "re_retrieving"
         for e in events
     )
     # doc retrieve was called twice (initial + re-retrieval)

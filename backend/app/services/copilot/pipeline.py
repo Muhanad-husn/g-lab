@@ -173,7 +173,7 @@ class CopilotPipeline:
         synthesiser_svc = SynthesiserService(openrouter_client)
 
         # ── Step 1: Intent routing ──────────────────────────────────────
-        yield SSEEvent(event="status", data={"status": "routing"})
+        yield SSEEvent(event="status", data={"stage": "routing"})
         intent = await router_svc.classify(
             query=request.query,
             graph_context_summary="",
@@ -188,11 +188,14 @@ class CopilotPipeline:
         )
 
         # ── Step 2: Parallel graph + document retrieval ─────────────────
-        yield SSEEvent(event="status", data={"status": "retrieving"})
+        yield SSEEvent(event="status", data={"stage": "retrieving"})
 
         doc_role: DocumentRetrievalRole | None = None
         if retrieval_service is not None and reranker_service is not None:
             doc_role = DocumentRetrievalRole(retrieval_service, reranker_service)
+
+        if doc_role is not None and intent.needs_docs and library_id:
+            yield SSEEvent(event="status", data={"stage": "retrieving_docs"})
 
         graph_coro = graph_retrieval_svc.retrieve(
             intent=intent,
@@ -213,7 +216,7 @@ class CopilotPipeline:
             else _empty_doc_result()
         )
 
-        (rows, _graph_evidence), (doc_chunks, _doc_evidence) = await asyncio.gather(
+        (rows, _graph_evidence), (doc_chunks, doc_evidence) = await asyncio.gather(
             graph_coro, doc_coro
         )
         logger.debug(
@@ -221,6 +224,12 @@ class CopilotPipeline:
             row_count=len(rows),
             doc_chunk_count=len(doc_chunks),
         )
+
+        if doc_evidence:
+            yield SSEEvent(
+                event="doc_evidence",
+                data={"sources": [e.model_dump() for e in doc_evidence]},
+            )
 
         # ── Step 3: First synthesis pass (buffered to inspect confidence)
         first_pass: list[SSEEvent] = []
@@ -244,7 +253,7 @@ class CopilotPipeline:
                 confidence=confidence_score,
                 threshold=_RE_RETRIEVAL_THRESHOLD,
             )
-            yield SSEEvent(event="status", data={"status": "re_retrieving"})
+            yield SSEEvent(event="status", data={"stage": "re_retrieving"})
 
             # Broaden the graph search scope
             broad_intent = RouterIntent(

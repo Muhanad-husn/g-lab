@@ -8,7 +8,7 @@ from __future__ import annotations
 import hashlib
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import Response
@@ -116,6 +116,7 @@ async def upload_document(
     library_id: str,
     file: UploadFile,
     background_tasks: BackgroundTasks,
+    session_id: str | None = Form(default=None),
     db: AsyncSession = Depends(get_db),
     chromadb_client: ChromaDBClient | None = Depends(get_chromadb),
     embedding_service: EmbeddingService | None = Depends(get_embedding_service),
@@ -166,7 +167,7 @@ async def upload_document(
 
     background_tasks.add_task(
         action_logger.log,
-        session_id=_SYSTEM_SESSION,
+        session_id=session_id or _SYSTEM_SESSION,
         action_type=ActionType.DOC_UPLOAD,
         actor="user",
         payload={
@@ -211,6 +212,16 @@ async def remove_document(
 # ---------------------------------------------------------------------------
 # Session attachment
 # ---------------------------------------------------------------------------
+
+
+@router.get("/libraries/attached/{session_id}")
+async def get_attached_library(
+    session_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Get the library currently attached to a session, if any."""
+    library = await _svc.get_attached_library(db, session_id)
+    return envelope({"library_id": library.id if library else None})
 
 
 @router.post("/libraries/{library_id}/attach")
