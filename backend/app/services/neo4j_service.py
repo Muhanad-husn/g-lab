@@ -168,6 +168,46 @@ class Neo4jService:
             )
         return samples
 
+    async def get_overview(self) -> dict[str, Any]:
+        """Return schema + top 5 central nodes by degree.
+
+        Returns dict matching GraphOverview shape.
+        """
+        self._require_driver()
+        assert self._driver is not None
+
+        schema = await self.get_schema()
+
+        cypher = (
+            "MATCH (n) "
+            "RETURN elementId(n) AS id, labels(n) AS labels, "
+            "properties(n) AS props, "
+            "size([(n)--() | 1]) AS degree "
+            "ORDER BY degree DESC LIMIT 5"
+        )
+        async with self._driver.session(
+            default_access_mode="READ",
+        ) as session:
+            try:
+                result = await session.execute_read(
+                    _run_query, cypher, {}, _SCHEMA_TIMEOUT_MS
+                )
+            except (Neo4jError, TimeoutError):
+                result = []
+
+        central_nodes = []
+        for r in result:
+            central_nodes.append(
+                {
+                    "id": r["id"],
+                    "labels": r["labels"],
+                    "properties": _sanitize_props(r["props"]),
+                    "degree": r["degree"],
+                }
+            )
+
+        return {"schema": schema, "central_nodes": central_nodes}
+
     # ------------------------------------------------------------------
     # Query operations
     # ------------------------------------------------------------------

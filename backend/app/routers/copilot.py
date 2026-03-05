@@ -113,7 +113,6 @@ async def query(
             session_id=body.session_id,
             semaphore=semaphore,
             schema_summary=schema_summary,
-            canvas_summary=body.canvas_summary or "",
         ):
             # Collect assistant text for conversation storage
             if event.event == "text_chunk" and isinstance(event.data, dict):

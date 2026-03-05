@@ -25,10 +25,12 @@ from fastapi.responses import JSONResponse
 from app.dependencies import get_action_logger, get_neo4j
 from app.models.enums import ActionType
 from app.models.schemas import (
+    CentralNode,
     ExpandRequest,
     ExpandResponse,
     GraphEdge,
     GraphNode,
+    GraphOverview,
     PathRequest,
     PathResponse,
     RawQueryRequest,
@@ -44,6 +46,26 @@ from app.utils.response import envelope, error_response
 
 router = APIRouter()
 _guardrails = GuardrailService()
+
+
+# ---------------------------------------------------------------------------
+# GET /graph/schema/overview
+# ---------------------------------------------------------------------------
+
+
+@router.get("/schema/overview")
+async def get_overview(
+    neo4j: Neo4jService = Depends(get_neo4j),
+) -> dict[str, Any]:
+    try:
+        overview_data = await neo4j.get_overview()
+    except TimeoutError as exc:
+        raise HTTPException(status_code=504, detail="Overview query timed out") from exc
+    schema_resp = SchemaResponse(**overview_data["schema"])
+    central = [CentralNode(**n) for n in overview_data["central_nodes"]]
+    return envelope(
+        GraphOverview(schema_info=schema_resp, central_nodes=central).model_dump()
+    )
 
 
 # ---------------------------------------------------------------------------

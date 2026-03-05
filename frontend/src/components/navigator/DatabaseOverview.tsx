@@ -3,7 +3,9 @@ import { ChevronDown, ChevronLeft, ChevronRight, ChevronRight as ChevronRightIco
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { getSchema, getSamples, getRelSamples } from "@/api/graph";
-import type { LabelInfo, RelTypeInfo } from "@/lib/types";
+import { useStore } from "@/store";
+import { getDisplayLabel } from "@/components/canvas/cytoscapeStyles";
+import type { CentralNode, LabelInfo, RelTypeInfo } from "@/lib/types";
 
 const SAMPLE_PAGE_SIZE = 5;
 
@@ -190,13 +192,54 @@ function LabelRow({ name, count, isRelType = false }: LabelRowProps) {
 
 // ─── Database overview ────────────────────────────────────────────────────────
 
+function CentralNodesSection({ nodes }: { nodes: CentralNode[] }) {
+  if (nodes.length === 0) return null;
+  return (
+    <>
+      <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        Central Nodes (by degree)
+      </p>
+      {nodes.map((n) => (
+        <div
+          key={n.id}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs"
+        >
+          <span className="flex-1 text-foreground font-mono truncate">
+            {getDisplayLabel(n.properties, n.labels)}
+          </span>
+          <span className="text-[10px] text-muted-foreground shrink-0">
+            {n.labels.join(", ")}
+          </span>
+          <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
+            {n.degree}
+          </span>
+        </div>
+      ))}
+      <Separator className="my-2" />
+    </>
+  );
+}
+
 export function DatabaseOverview() {
+  const dbOverview = useStore((s) => s.dbOverview);
   const [labels, setLabels] = useState<LabelInfo[]>([]);
   const [relTypes, setRelTypes] = useState<RelTypeInfo[]>([]);
+  const [centralNodes, setCentralNodes] = useState<CentralNode[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Populate from store overview if available
   useEffect(() => {
+    if (dbOverview) {
+      setLabels(dbOverview.schema_info.labels);
+      setRelTypes(dbOverview.schema_info.relationship_types);
+      setCentralNodes(dbOverview.central_nodes);
+    }
+  }, [dbOverview]);
+
+  // Fallback lazy fetch if store is empty when component mounts
+  useEffect(() => {
+    if (dbOverview) return; // already have data from store
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -220,7 +263,7 @@ export function DatabaseOverview() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [dbOverview]);
 
   if (loading) {
     return (
@@ -250,6 +293,7 @@ export function DatabaseOverview() {
   return (
     <ScrollArea className="h-full">
       <div className="px-1 py-2 space-y-0.5">
+        <CentralNodesSection nodes={centralNodes} />
         {labels.length > 0 && (
           <>
             <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">

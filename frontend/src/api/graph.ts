@@ -2,6 +2,7 @@ import * as client from "./client";
 import type {
   ExpandRequest,
   ExpandResponse,
+  GraphOverview,
   PathRequest,
   PathResponse,
   RawQueryRequest,
@@ -14,6 +15,11 @@ const BASE = "/graph";
 
 export async function getSchema(): Promise<SchemaResponse> {
   const { data } = await client.get<SchemaResponse>(`${BASE}/schema`);
+  return data;
+}
+
+export async function getOverview(): Promise<GraphOverview> {
+  const { data } = await client.get<GraphOverview>(`${BASE}/schema/overview`);
   return data;
 }
 

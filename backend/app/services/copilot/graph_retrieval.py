@@ -29,7 +29,7 @@ logger: Any = get_logger(__name__)
 
 _SANITISER = CypherSanitiser()
 _EXECUTE_TIMEOUT_S = 30.0
-_ENTITY_SEARCH_LIMIT = 3  # max results per entity name
+_ENTITY_SEARCH_LIMIT = 5  # max results per entity name
 
 
 class GraphRetrievalService:
@@ -46,7 +46,6 @@ class GraphRetrievalService:
         model: str = "anthropic/claude-3-haiku",
         temperature: float = 0.0,
         max_tokens: int = 512,
-        canvas_summary: str = "",
         query: str = "",
     ) -> tuple[list[dict[str, Any]], list[EvidenceSource]]:
         """Generate a Cypher query and return raw rows + evidence sources.
@@ -78,7 +77,6 @@ class GraphRetrievalService:
             model=model,
             temperature=temperature,
             max_tokens=max_tokens,
-            canvas_summary=canvas_summary,
             query=query,
             resolved_entities=resolved,
         )
@@ -93,7 +91,6 @@ class GraphRetrievalService:
             model=model,
             temperature=temperature,
             max_tokens=max_tokens,
-            canvas_summary=canvas_summary,
             query=query,
             resolved_entities=resolved,
         )
@@ -218,7 +215,6 @@ class GraphRetrievalService:
         model: str,
         temperature: float,
         max_tokens: int,
-        canvas_summary: str = "",
         query: str = "",
         resolved_entities: str = "",
     ) -> str:
@@ -226,7 +222,6 @@ class GraphRetrievalService:
         system_prompt = GRAPH_RETRIEVAL_SYSTEM_PROMPT.format(
             schema_summary=schema_summary or "(schema not available)",
             cypher_hint=intent.cypher_hint or "none",
-            canvas_context=canvas_summary or "(empty canvas)",
             resolved_entities=resolved_entities or "(none)",
         )
         messages = [
@@ -256,7 +251,6 @@ class GraphRetrievalService:
         model: str,
         temperature: float,
         max_tokens: int,
-        canvas_summary: str = "",
         query: str = "",
         resolved_entities: str = "",
     ) -> str:
@@ -281,7 +275,6 @@ class GraphRetrievalService:
             model=model,
             temperature=temperature,
             max_tokens=max_tokens,
-            canvas_summary=canvas_summary,
             query=query,
             resolved_entities=resolved_entities,
         )
@@ -307,7 +300,6 @@ class GraphRetrievalService:
         model: str,
         temperature: float,
         max_tokens: int,
-        canvas_summary: str = "",
         query: str = "",
         resolved_entities: str = "",
     ) -> str:
@@ -315,7 +307,6 @@ class GraphRetrievalService:
         system_prompt = GRAPH_RETRIEVAL_SYSTEM_PROMPT.format(
             schema_summary=schema_summary or "(schema not available)",
             cypher_hint=intent.cypher_hint or "none",
-            canvas_context=canvas_summary or "(empty canvas)",
             resolved_entities=resolved_entities or "(none)",
         )
         retry_user_msg = GRAPH_RETRIEVAL_RETRY_PROMPT.format(

@@ -6,7 +6,7 @@ import { createGraphSlice, type GraphSlice } from "@/store/graphSlice";
 import { createSessionSlice, type SessionSlice } from "@/store/sessionSlice";
 import { createUiSlice, type UiSlice } from "@/store/uiSlice";
 import { PRESETS } from "@/lib/constants";
-import type { GraphDelta, GraphNode, SessionResponse } from "@/lib/types";
+import type { GraphNode, SessionResponse } from "@/lib/types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -246,17 +246,23 @@ describe("copilotSlice — streaming actions", () => {
     expect(store.getState().messages[0].content).toBe("Part 1 Part 2");
   });
 
-  it("acceptDelta cross-slice: adds to graphSlice and clears copilotSlice", () => {
-    const delta: GraphDelta = {
-      add_nodes: [{ id: "n1", labels: ["X"], properties: {} }],
-      add_edges: [],
-    };
-    store.getState().setPendingDelta(delta);
-    store.getState().acceptDelta();
+  it("graph delta flow: snapshot and replace", () => {
+    // Pre-populate canvas
+    store.getState().addNodes([{ id: "old", labels: ["Y"], properties: {} }]);
+    expect(store.getState().nodes).toHaveLength(1);
+
+    // Simulate copilot delta: snapshot → replace (don't use clearGraph)
+    store.getState().snapshotCanvas();
+    store.setState({
+      nodes: [{ id: "n1", labels: ["X"], properties: {} }],
+      edges: [],
+      positions: {},
+      collapsedNodeIds: [],
+    });
 
     expect(store.getState().nodes).toHaveLength(1);
     expect(store.getState().nodes[0].id).toBe("n1");
-    expect(store.getState().pendingDelta).toBeNull();
+    expect(store.getState().canvasSnapshot).not.toBeNull();
   });
 });
 

@@ -1,7 +1,6 @@
 import { useStore } from "@/store";
 import { expand, findPaths as findPathsApi } from "@/api/graph";
 import { ApiRequestError } from "@/api/client";
-import { cytoscapeRef } from "@/lib/cytoscapeRef";
 import type { ExpandResponse, GuardrailDetail, PathResponse } from "@/lib/types";
 
 /**
@@ -101,23 +100,5 @@ export function useGraphActions() {
     }
   }
 
-  /**
-   * Accept the Copilot-proposed graph delta.
-   * Promotes ghost elements on the canvas to real elements, then merges
-   * the delta nodes/edges into graphSlice and clears pendingDelta.
-   */
-  function acceptCopilotDelta(): void {
-    // Snapshot current canvas state for undo before applying delta
-    useStore.getState().snapshotCanvas();
-
-    const cy = cytoscapeRef.current;
-    if (cy) {
-      // Promote ghost elements → real (remove dashed style, make interactive)
-      cy.elements(".ghost").removeClass("ghost");
-    }
-    // Cross-slice action: adds delta to graphSlice and clears pendingDelta
-    useStore.getState().acceptDelta();
-  }
-
-  return { expandNode, searchAndSeed, findPaths, acceptCopilotDelta };
+  return { expandNode, searchAndSeed, findPaths };
 }

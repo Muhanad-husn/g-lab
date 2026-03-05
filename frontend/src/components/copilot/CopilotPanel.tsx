@@ -3,66 +3,8 @@ import { useStore } from "@/store";
 import { useSSE } from "@/hooks/useSSE";
 import { useReadOnlyMode } from "@/hooks/useReadOnlyMode";
 import { ConfidenceBadge } from "./ConfidenceBadge";
-import { getDisplayLabel } from "@/components/canvas/cytoscapeStyles";
 import { API_BASE } from "@/lib/constants";
-import type { CopilotMessage, GraphNode, GraphEdge } from "@/lib/types";
-
-// ─── Canvas summary builder ─────────────────────────────────────────────────
-
-function buildCanvasSummary(): string {
-  const { nodes, edges } = useStore.getState() as {
-    nodes: GraphNode[];
-    edges: GraphEdge[];
-  };
-  if (nodes.length === 0 && edges.length === 0) return "";
-
-  const lines: string[] = [`Canvas: ${nodes.length} nodes, ${edges.length} relationships`];
-
-  // Node labels with counts and up to 5 example display names
-  const labelMap = new Map<string, string[]>();
-  for (const node of nodes) {
-    for (const label of node.labels) {
-      const names = labelMap.get(label) ?? [];
-      const displayName = getDisplayLabel(node.properties, node.labels);
-      if (names.length < 5) names.push(displayName);
-      labelMap.set(label, names);
-    }
-  }
-  for (const [label, names] of labelMap) {
-    const count = nodes.filter((n) => n.labels.includes(label)).length;
-    lines.push(`  :${label} (${count}) — e.g. ${names.join(", ")}`);
-  }
-
-  // Relationship types with counts
-  const typeMap = new Map<string, number>();
-  for (const edge of edges) {
-    typeMap.set(edge.type, (typeMap.get(edge.type) ?? 0) + 1);
-  }
-  for (const [type, count] of typeMap) {
-    lines.push(`  [:${type}] (${count})`);
-  }
-
-  // Specific edge connections (up to 30) so the LLM knows who connects to whom
-  const nodeNameMap = new Map<string, string>();
-  for (const node of nodes) {
-    nodeNameMap.set(node.id, getDisplayLabel(node.properties, node.labels));
-  }
-  const edgeLimit = Math.min(edges.length, 30);
-  if (edgeLimit > 0) {
-    lines.push("Connections:");
-    for (let i = 0; i < edgeLimit; i++) {
-      const e = edges[i];
-      const src = nodeNameMap.get(e.source) ?? e.source;
-      const tgt = nodeNameMap.get(e.target) ?? e.target;
-      lines.push(`  ${src} -[:${e.type}]-> ${tgt}`);
-    }
-    if (edges.length > 30) {
-      lines.push(`  ... and ${edges.length - 30} more`);
-    }
-  }
-
-  return lines.join("\n");
-}
+import type { CopilotMessage } from "@/lib/types";
 
 // ─── Pipeline status indicator ─────────────────────────────────────────────────
 
@@ -158,11 +100,11 @@ export function CopilotPanel() {
   const appendTextChunk = useStore((s) => s.appendTextChunk);
   const setEvidence = useStore((s) => s.setEvidence);
   const appendDocEvidence = useStore((s) => s.appendDocEvidence);
-  const setPendingDelta = useStore((s) => s.setPendingDelta);
   const setConfidence = useStore((s) => s.setConfidence);
   const setStatus = useStore((s) => s.setStatus);
   const finishStream = useStore((s) => s.finishStream);
   const addMessage = useStore((s) => s.addMessage);
+  const snapshotCanvas = useStore((s) => s.snapshotCanvas);
 
   // Auto-scroll to bottom when messages or streaming content change
   useEffect(() => {
@@ -199,13 +141,22 @@ export function CopilotPanel() {
           session_id: sessionId!,
           include_graph_context: true,
           model_assignments: useStore.getState().modelAssignments,
-          canvas_summary: buildCanvasSummary() || null,
         },
         {
           onTextChunk: ({ text }) => appendTextChunk(text),
           onEvidence: ({ sources }) => setEvidence(sources),
           onDocEvidence: ({ sources }) => appendDocEvidence(sources),
-          onGraphDelta: (delta) => setPendingDelta(delta),
+          onGraphDelta: (delta) => {
+            // Snapshot current canvas for undo, then replace with delta data.
+            // Don't use clearGraph() because it nulls canvasSnapshot.
+            snapshotCanvas();
+            useStore.setState({
+              nodes: delta.add_nodes,
+              edges: delta.add_edges,
+              positions: {},
+              collapsedNodeIds: [],
+            });
+          },
           onConfidence: (score) => setConfidence(score),
           onStatus: ({ stage }) => setStatus(stage),
           onDone: () => finishStream(sessionId!),

@@ -52,7 +52,6 @@ class CopilotPipeline:
         reranker_service: Any = None,
         library_id: str | None = None,
         schema_summary: str = "",
-        canvas_summary: str = "",
     ) -> AsyncGenerator[SSEEvent, None]:
         """Return an async generator that runs the full pipeline.
 
@@ -83,7 +82,6 @@ class CopilotPipeline:
             reranker_service=reranker_service,
             library_id=library_id,
             schema_summary=schema_summary,
-            canvas_summary=canvas_summary,
         )
 
     # ------------------------------------------------------------------
@@ -102,7 +100,6 @@ class CopilotPipeline:
         reranker_service: Any = None,
         library_id: str | None = None,
         schema_summary: str = "",
-        canvas_summary: str = "",
     ) -> AsyncGenerator[SSEEvent, None]:
         """Top-level generator: semaphore guard + timeout wrapper."""
         # Concurrency check (non-blocking)
@@ -132,7 +129,6 @@ class CopilotPipeline:
                         reranker_service=reranker_service,
                         library_id=library_id,
                         schema_summary=schema_summary,
-                        canvas_summary=canvas_summary,
                     ):
                         yield event
             except TimeoutError:
@@ -159,7 +155,6 @@ class CopilotPipeline:
         reranker_service: Any = None,
         library_id: str | None = None,
         schema_summary: str = "",
-        canvas_summary: str = "",
     ) -> AsyncGenerator[SSEEvent, None]:
         """Core pipeline logic: route → retrieve → synthesise → maybe re-retrieve."""
         models = preset_config.models
@@ -190,7 +185,6 @@ class CopilotPipeline:
             model=router_model,
             temperature=0.0,
             max_tokens=router_tokens,
-            canvas_summary=canvas_summary,
         )
         logger.debug(
             "copilot_routed",
@@ -215,7 +209,6 @@ class CopilotPipeline:
             model=retrieval_model,
             temperature=0.0,
             max_tokens=retrieval_tokens,
-            canvas_summary=canvas_summary,
             query=request.query,
         )
         doc_coro = (
@@ -254,7 +247,6 @@ class CopilotPipeline:
             model=synth_model,
             max_tokens=synth_tokens,
             doc_chunks=doc_chunks,
-            canvas_summary=canvas_summary,
         ):
             first_pass.append(event)
             if event.event == "confidence" and isinstance(event.data, dict):
@@ -283,7 +275,6 @@ class CopilotPipeline:
                 model=retrieval_model,
                 temperature=0.3,  # more exploratory
                 max_tokens=retrieval_tokens,
-                canvas_summary=canvas_summary,
                 query=request.query,
             )
             # Increase doc top-k by 5 on re-retrieval
@@ -309,7 +300,6 @@ class CopilotPipeline:
                 model=synth_model,
                 max_tokens=synth_tokens,
                 doc_chunks=combined_docs,
-                canvas_summary=canvas_summary,
             ):
                 yield event
         else:

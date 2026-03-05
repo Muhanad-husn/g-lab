@@ -1,11 +1,11 @@
 /**
- * Copilot integration test — SSE event sequence → store state → acceptDelta.
+ * Copilot integration test — SSE event sequence → store state.
  *
  * Simulates the full event flow that useSSE dispatches to copilotSlice,
  * then verifies:
  * 1. State updates at each pipeline stage (routing, retrieving, text chunks, etc.)
  * 2. finishStream flushes the accumulated text as an assistant message
- * 3. acceptDelta applies proposed nodes/edges to graphSlice
+ * 3. graph_delta directly populates graphSlice (clear+populate pattern)
  */
 
 import { beforeEach, describe, expect, it } from "vitest";
@@ -57,9 +57,8 @@ function makeEvidenceSources(): EvidenceSource[] {
   ];
 }
 
-// ─── Simulate SSE event dispatch (mirrors useSSE.ts dispatchEvent) ─────────────
-// Instead of calling dispatchEvent directly (not exported), we call the
-// corresponding store methods exactly as CopilotPanel does via handlers.
+// ─── Simulate SSE event dispatch ─────────────────────────────────────────────
+// graph_delta now directly clears canvas and adds nodes/edges (no pendingDelta)
 
 function simulateSseSequence(
   store: ReturnType<typeof makeStore>,
@@ -91,7 +90,15 @@ function simulateSseSequence(
         s.setEvidence(event.sources);
         break;
       case "graph_delta":
-        s.setPendingDelta(event.delta);
+        // Mirror the CopilotPanel behavior: snapshot → replace
+        // Don't use clearGraph() because it nulls canvasSnapshot.
+        store.getState().snapshotCanvas();
+        store.setState({
+          nodes: event.delta.add_nodes,
+          edges: event.delta.add_edges,
+          positions: {},
+          collapsedNodeIds: [],
+        });
         break;
       case "confidence":
         s.setConfidence(event.score);
@@ -118,7 +125,6 @@ describe("Copilot SSE integration — happy-path stream sequence", () => {
     expect(s.messages).toHaveLength(0);
     expect(s.pipelineStatus).toBeNull();
     expect(s.confidence).toBeNull();
-    expect(s.pendingDelta).toBeNull();
     expect(s.nodes).toHaveLength(0);
   });
 
@@ -172,7 +178,10 @@ describe("Copilot SSE integration — happy-path stream sequence", () => {
       { type: "done" },
     ]);
 
-    expect(store.getState().confidence).toEqual({ score: 0.72, band: "medium" });
+    expect(store.getState().confidence).toEqual({
+      score: 0.72,
+      band: "medium",
+    });
   });
 
   it("evidence sources are stored during stream", () => {
@@ -196,7 +205,13 @@ describe("Copilot SSE integration — graph delta flow", () => {
     store = makeStore();
   });
 
-  it("graph_delta event sets pendingDelta", () => {
+  it("graph_delta event clears canvas and adds new nodes/edges", () => {
+    // Pre-populate canvas
+    store.getState().addNodes([
+      { id: "old-node", labels: ["Org"], properties: {} },
+    ]);
+    expect(store.getState().nodes).toHaveLength(1);
+
     const delta = makeDelta(3, 2);
 
     simulateSseSequence(store, "sess-delta", [
@@ -206,64 +221,52 @@ describe("Copilot SSE integration — graph delta flow", () => {
     ]);
 
     const s = store.getState();
-    expect(s.pendingDelta).not.toBeNull();
-    expect(s.pendingDelta?.add_nodes).toHaveLength(3);
-    expect(s.pendingDelta?.add_edges).toHaveLength(2);
+    // Old nodes should be gone, only delta nodes remain
+    expect(s.nodes).toHaveLength(3);
+    expect(s.edges).toHaveLength(2);
+    expect(s.nodes.map((n) => n.id)).not.toContain("old-node");
   });
 
-  it("acceptDelta adds nodes and edges to graphSlice", () => {
-    const delta = makeDelta(2, 1);
-
-    store.getState().startStream();
-    store.getState().setPendingDelta(delta);
-    store.getState().finishStream("sess-accept");
-
-    // Accept the delta
-    store.getState().acceptDelta();
-
-    const s = store.getState();
-    expect(s.pendingDelta).toBeNull();
-    expect(s.nodes).toHaveLength(2);
-    expect(s.edges).toHaveLength(1);
-    expect(s.nodes.map((n) => n.id)).toContain("proposed-node-0");
-    expect(s.nodes.map((n) => n.id)).toContain("proposed-node-1");
-  });
-
-  it("acceptDelta deduplicates against existing canvas nodes", () => {
-    // Pre-populate canvas with one of the delta nodes
+  it("canvas snapshot is created before clearing for undo", () => {
     store.getState().addNodes([
-      { id: "proposed-node-0", labels: ["Person"], properties: {} },
+      { id: "original", labels: ["Person"], properties: {} },
     ]);
 
-    const delta = makeDelta(2, 1); // includes proposed-node-0 and proposed-node-1
-    store.getState().setPendingDelta(delta);
-    store.getState().acceptDelta();
+    const delta = makeDelta(1, 0);
 
+    simulateSseSequence(store, "sess-snap", [
+      { type: "start" },
+      { type: "graph_delta", delta },
+      { type: "done" },
+    ]);
+
+    // Snapshot should exist for undo
     const s = store.getState();
-    // Should have exactly 2 nodes (pre-existing + new, deduped)
-    expect(s.nodes).toHaveLength(2);
-    expect(s.nodes.map((n) => n.id)).toContain("proposed-node-0");
-    expect(s.nodes.map((n) => n.id)).toContain("proposed-node-1");
+    expect(s.canvasSnapshot).not.toBeNull();
+    expect(s.canvasSnapshot?.nodes).toHaveLength(1);
+    expect(s.canvasSnapshot?.nodes[0].id).toBe("original");
   });
 
-  it("clearPendingDelta discards delta without modifying graphSlice", () => {
+  it("revertToSnapshot restores previous canvas state", () => {
+    store.getState().addNodes([
+      { id: "original", labels: ["Person"], properties: {} },
+    ]);
+
     const delta = makeDelta(2, 1);
 
-    store.getState().setPendingDelta(delta);
-    store.getState().clearPendingDelta();
+    simulateSseSequence(store, "sess-revert", [
+      { type: "start" },
+      { type: "graph_delta", delta },
+      { type: "done" },
+    ]);
+
+    // Revert
+    store.getState().revertToSnapshot();
 
     const s = store.getState();
-    expect(s.pendingDelta).toBeNull();
-    expect(s.nodes).toHaveLength(0); // graph untouched
-    expect(s.edges).toHaveLength(0);
-  });
-
-  it("acceptDelta is a no-op when pendingDelta is null", () => {
-    store.getState().acceptDelta();
-
-    const s = store.getState();
-    expect(s.nodes).toHaveLength(0);
-    expect(s.edges).toHaveLength(0);
+    expect(s.nodes).toHaveLength(1);
+    expect(s.nodes[0].id).toBe("original");
+    expect(s.canvasSnapshot).toBeNull();
   });
 });
 
@@ -271,8 +274,6 @@ describe("Copilot SSE integration — re-retrieval pattern", () => {
   it("re_retrieving status clears content before second pass starts", () => {
     const store = makeStore();
 
-    // Simulate first pass (low confidence) — this gets discarded by the backend
-    // Frontend only sees the status sequence as emitted by the pipeline
     simulateSseSequence(store, "sess-retr", [
       { type: "start" },
       { type: "status", stage: "routing" },
@@ -280,14 +281,14 @@ describe("Copilot SSE integration — re-retrieval pattern", () => {
       { type: "status", stage: "re_retrieving" },
       { type: "status", stage: "retrieving" },
       { type: "text_chunk", text: "After broader search: confirmed." },
-      { type: "confidence", score: { score: 0.80, band: "high" } },
+      { type: "confidence", score: { score: 0.8, band: "high" } },
       { type: "done" },
     ]);
 
     const s = store.getState();
     expect(s.messages).toHaveLength(1);
     expect(s.messages[0].content).toBe("After broader search: confirmed.");
-    expect(s.confidence?.score).toBe(0.80);
+    expect(s.confidence?.score).toBe(0.8);
   });
 });
 
@@ -296,7 +297,6 @@ describe("Copilot SSE integration — multi-message conversation", () => {
     const store = makeStore();
     const sessionId = "sess-multi";
 
-    // First query + response
     store.getState().addMessage({
       id: "m1",
       session_id: sessionId,
@@ -310,7 +310,6 @@ describe("Copilot SSE integration — multi-message conversation", () => {
       { type: "done" },
     ]);
 
-    // Second query + response
     store.getState().addMessage({
       id: "m3",
       session_id: sessionId,
@@ -325,7 +324,7 @@ describe("Copilot SSE integration — multi-message conversation", () => {
     ]);
 
     const messages = store.getState().messages;
-    expect(messages).toHaveLength(4); // user, assistant, user, assistant
+    expect(messages).toHaveLength(4);
     expect(messages[0].role).toBe("user");
     expect(messages[1].role).toBe("assistant");
     expect(messages[1].content).toBe("Alice is a person.");

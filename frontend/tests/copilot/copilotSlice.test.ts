@@ -1,27 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createStore } from "zustand/vanilla";
 import { createCopilotSlice, type CopilotSlice } from "@/store/copilotSlice";
-import { createGraphSlice, type GraphSlice } from "@/store/graphSlice";
-import type { CopilotMessage, GraphDelta } from "@/lib/types";
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function makeDelta(nodeCount = 2, edgeCount = 1): GraphDelta {
-  return {
-    add_nodes: Array.from({ length: nodeCount }, (_, i) => ({
-      id: `ghost-node-${i}`,
-      labels: ["Person"],
-      properties: { name: `Ghost ${i}` },
-    })),
-    add_edges: Array.from({ length: edgeCount }, (_, i) => ({
-      id: `ghost-edge-${i}`,
-      type: "KNOWS",
-      source: "ghost-node-0",
-      target: "ghost-node-1",
-      properties: {},
-    })),
-  };
-}
+import type { CopilotMessage } from "@/lib/types";
 
 // ─── copilotSlice — standalone ────────────────────────────────────────────────
 
@@ -40,7 +20,6 @@ describe("copilotSlice — initial state", () => {
     expect(s.messages).toHaveLength(0);
     expect(s.streamingContent).toBe("");
     expect(s.isStreaming).toBe(false);
-    expect(s.pendingDelta).toBeNull();
     expect(s.confidence).toBeNull();
     expect(s.evidence).toHaveLength(0);
     expect(s.pipelineStatus).toBeNull();
@@ -89,19 +68,10 @@ describe("copilotSlice — stream lifecycle", () => {
 
   it("setConfidence stores score", () => {
     store.getState().setConfidence({ score: 0.85, band: "high" });
-    expect(store.getState().confidence).toEqual({ score: 0.85, band: "high" });
-  });
-
-  it("setPendingDelta stores delta", () => {
-    const delta = makeDelta();
-    store.getState().setPendingDelta(delta);
-    expect(store.getState().pendingDelta).toEqual(delta);
-  });
-
-  it("clearPendingDelta nulls delta", () => {
-    store.getState().setPendingDelta(makeDelta());
-    store.getState().clearPendingDelta();
-    expect(store.getState().pendingDelta).toBeNull();
+    expect(store.getState().confidence).toEqual({
+      score: 0.85,
+      band: "high",
+    });
   });
 
   it("finishStream flushes streamingContent as assistant message", () => {
@@ -169,65 +139,5 @@ describe("copilotSlice — stream lifecycle", () => {
     expect(messages).toHaveLength(2);
     expect(messages[0].id).toBe("h1");
     expect(messages[1].id).toBe("h2");
-  });
-});
-
-// ─── copilotSlice — acceptDelta cross-slice ───────────────────────────────────
-
-type CombinedStore = CopilotSlice & GraphSlice;
-
-describe("copilotSlice — acceptDelta (cross-slice)", () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let store: ReturnType<typeof createStore<CombinedStore>>;
-
-  beforeEach(() => {
-    store = createStore<CombinedStore>()((...a: any[]) => ({
-      ...createGraphSlice(...a),
-      ...createCopilotSlice(...a),
-    }));
-  });
-
-  it("acceptDelta adds nodes and edges to graphSlice", () => {
-    const delta = makeDelta(2, 1);
-    store.getState().setPendingDelta(delta);
-    store.getState().acceptDelta();
-
-    const { nodes, edges } = store.getState();
-    expect(nodes).toHaveLength(2);
-    expect(edges).toHaveLength(1);
-    expect(nodes.map((n) => n.id)).toEqual(["ghost-node-0", "ghost-node-1"]);
-  });
-
-  it("acceptDelta clears pendingDelta after applying", () => {
-    store.getState().setPendingDelta(makeDelta());
-    store.getState().acceptDelta();
-    expect(store.getState().pendingDelta).toBeNull();
-  });
-
-  it("acceptDelta is a no-op when pendingDelta is null", () => {
-    store.getState().acceptDelta();
-    expect(store.getState().nodes).toHaveLength(0);
-    expect(store.getState().edges).toHaveLength(0);
-  });
-
-  it("acceptDelta deduplicates with existing graph nodes", () => {
-    const node = {
-      id: "existing",
-      labels: ["Person"],
-      properties: {},
-    };
-    store.getState().addNodes([node]);
-
-    const delta: GraphDelta = {
-      add_nodes: [node, { id: "new-node", labels: ["Org"], properties: {} }],
-      add_edges: [],
-    };
-    store.getState().setPendingDelta(delta);
-    store.getState().acceptDelta();
-
-    // existing node not duplicated
-    expect(store.getState().nodes).toHaveLength(2);
-    expect(store.getState().nodes.map((n) => n.id)).toContain("existing");
-    expect(store.getState().nodes.map((n) => n.id)).toContain("new-node");
   });
 });

@@ -1,5 +1,5 @@
 import type { StateCreator } from "zustand";
-import type { GraphEdge, GraphNode } from "@/lib/types";
+import type { GraphEdge, GraphNode, GraphOverview } from "@/lib/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -13,6 +13,7 @@ export interface CanvasSnapshot {
   nodes: GraphNode[];
   edges: GraphEdge[];
   positions: Record<string, { x: number; y: number }>;
+  collapsedNodeIds: string[];
 }
 
 export interface GraphSlice {
@@ -22,6 +23,8 @@ export interface GraphSlice {
   positions: Record<string, { x: number; y: number }>;
   filters: GraphFilters;
   canvasSnapshot: CanvasSnapshot | null;
+  dbOverview: GraphOverview | null;
+  collapsedNodeIds: string[];
 
   addNodes: (nodes: GraphNode[]) => void;
   addEdges: (edges: GraphEdge[]) => void;
@@ -33,6 +36,8 @@ export interface GraphSlice {
   clearGraph: () => void;
   snapshotCanvas: () => void;
   revertToSnapshot: () => void;
+  setDbOverview: (overview: GraphOverview) => void;
+  collapseNode: (id: string) => void;
 }
 
 // ─── Slice creator ────────────────────────────────────────────────────────────
@@ -48,6 +53,8 @@ export const createGraphSlice: StateCreator<
   positions: {},
   filters: { hidden_labels: [], hidden_types: [], collapsed_labels: [] },
   canvasSnapshot: null,
+  dbOverview: null,
+  collapsedNodeIds: [],
 
   addNodes: (incoming) =>
     set((state) => {
@@ -94,6 +101,7 @@ export const createGraphSlice: StateCreator<
       positions: {},
       filters: { hidden_labels: [], hidden_types: [], collapsed_labels: [] },
       canvasSnapshot: null,
+      collapsedNodeIds: [],
     }),
 
   snapshotCanvas: () =>
@@ -102,6 +110,7 @@ export const createGraphSlice: StateCreator<
         nodes: [...state.nodes],
         edges: [...state.edges],
         positions: { ...state.positions },
+        collapsedNodeIds: [...state.collapsedNodeIds],
       },
     })),
 
@@ -112,7 +121,17 @@ export const createGraphSlice: StateCreator<
         nodes: state.canvasSnapshot.nodes,
         edges: state.canvasSnapshot.edges,
         positions: state.canvasSnapshot.positions,
+        collapsedNodeIds: state.canvasSnapshot.collapsedNodeIds,
         canvasSnapshot: null,
       };
     }),
+
+  setDbOverview: (overview) => set({ dbOverview: overview }),
+
+  collapseNode: (id) =>
+    set((state) => ({
+      collapsedNodeIds: state.collapsedNodeIds.includes(id)
+        ? state.collapsedNodeIds.filter((nid) => nid !== id)
+        : [...state.collapsedNodeIds, id],
+    })),
 });

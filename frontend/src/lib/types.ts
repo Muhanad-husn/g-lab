@@ -157,6 +157,18 @@ export interface SchemaResponse {
   relationship_types: RelTypeInfo[];
 }
 
+export interface CentralNode {
+  id: string;
+  labels: string[];
+  properties: Record<string, unknown>;
+  degree: number;
+}
+
+export interface GraphOverview {
+  schema_info: SchemaResponse;
+  central_nodes: CentralNode[];
+}
+
 export interface RawQueryRequest {
   cypher: string;
   params?: Record<string, unknown>;
@@ -217,7 +229,6 @@ export interface CopilotQueryRequest {
   session_id: string;
   include_graph_context?: boolean;
   model_assignments?: Record<string, string> | null;
-  canvas_summary?: string | null;
 }
 
 export interface CopilotMessage {

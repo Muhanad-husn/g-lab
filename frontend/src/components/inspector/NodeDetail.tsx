@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { EyeOff, Eye, Trash2 } from "lucide-react";
 import { useStore } from "@/store";
 import { useGraphActions } from "@/hooks/useGraphActions";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,9 @@ export function NodeDetail({ id }: { id: string }) {
   const node = useStore((s) => s.nodes.find((n) => n.id === id));
   const edges = useStore((s) => s.edges);
   const presetConfig = useStore((s) => s.presetConfig);
+  const isCollapsed = useStore((s) => s.collapsedNodeIds.includes(id));
+  const collapseNode = useStore((s) => s.collapseNode);
+  const removeNode = useStore((s) => s.removeNode);
   const { expandNode } = useGraphActions();
 
   const [hops, setHops] = useState(presetConfig.default_hops);
@@ -165,6 +169,36 @@ export function NodeDetail({ id }: { id: string }) {
         >
           {expanding ? "Expanding…" : "Expand Node"}
         </Button>
+
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1 text-xs gap-1"
+            onClick={() => collapseNode(id)}
+          >
+            {isCollapsed ? (
+              <>
+                <Eye className="h-3 w-3" />
+                Show
+              </>
+            ) : (
+              <>
+                <EyeOff className="h-3 w-3" />
+                Hide
+              </>
+            )}
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            className="flex-1 text-xs gap-1"
+            onClick={() => removeNode(id)}
+          >
+            <Trash2 className="h-3 w-3" />
+            Remove
+          </Button>
+        </div>
       </div>
     </div>
   );

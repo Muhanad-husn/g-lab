@@ -25,19 +25,26 @@ Rules:
 - Set "needs_docs" to true when the answer requires uploaded reference
   documents (legislation, reports, entity registries).
 - "cypher_hint" is an optional partial Cypher sketch (MATCH clause only,
-  no WRITE operations) to guide graph retrieval.  Null if not helpful.
-  For questions about how two entities are connected or the shortest path
-  between them, use shortestPath or allShortestPaths in the hint, e.g.:
-  "MATCH p = shortestPath((a)-[*..5]-(b)) WHERE a.name CONTAINS 'X' AND b.name CONTAINS 'Y' RETURN p"
+  no WRITE operations) to guide graph retrieval. Null if not helpful.
+  Generate a cypher_hint for every needs_graph=true query. Match the pattern
+  to the question type:
+  * Connection / path questions → use shortestPath or allShortestPaths:
+    "MATCH (a),(b) WHERE a.name CONTAINS 'X' AND b.name CONTAINS 'Y'
+     MATCH p = shortestPath((a)-[*..5]-(b)) RETURN p"
+  * Aggregation / counting → use COUNT, COLLECT, or size():
+    "MATCH (n:Label) RETURN n.prop, count(*) ORDER BY count(*) DESC LIMIT 10"
+  * Property lookup → use WHERE with toLower() for case-insensitive matching:
+    "MATCH (n) WHERE toLower(n.name) CONTAINS toLower('value') RETURN n"
+  * Neighbourhood / exploration → use variable-length paths:
+    "MATCH (n)-[*1..2]-(m) WHERE n.name CONTAINS 'X' RETURN n, m LIMIT 50"
+  * Multi-hop chain → chain MATCH clauses or use path patterns:
+    "MATCH (a)-[:REL1]->(b)-[:REL2]->(c) WHERE a.name CONTAINS 'X' RETURN a, b, c"
 - "doc_query" is a short rephrasing of the user query optimised for
-  document search.  Null when needs_docs is false.
+  document search. Null when needs_docs is false.
 - When in doubt, set needs_graph=true.
 
 Graph schema summary:
 {schema_summary}
-
-Canvas context (nodes/edges currently visible on the investigation canvas):
-{canvas_context}
 """
 
 # ---------------------------------------------------------------------------
@@ -45,14 +52,22 @@ Canvas context (nodes/edges currently visible on the investigation canvas):
 # ---------------------------------------------------------------------------
 
 ENTITY_EXTRACTION_PROMPT = """\
-Extract entity names (people, organizations, locations, events) from the
-user's question. Return a JSON array of strings — just the names, nothing
-else. If no entities are found, return an empty array [].
+Extract entity names (people, organizations, locations, events, identifiers)
+from the user's question. Return a JSON array of strings — just the names,
+nothing else. If no entities are found, return an empty array [].
+
+Be thorough: extract partial names, nicknames, abbreviations, property
+values, and organisation types. Each distinct entity gets its own entry.
 
 Examples:
   "how are Sophia and Jan Visser connected?" → ["Sophia", "Jan Visser"]
   "show me all companies linked to Redwood" → ["Redwood"]
   "what happened on 2024-09-15?" → []
+  "find the relationship between ABC Corp and John" → ["ABC Corp", "John"]
+  "who works at the Ministry of Finance?" → ["Ministry of Finance"]
+  "show connections for passport number X12345" → ["X12345"]
+  "how is Dr. Martinez related to Redfern Group?" → ["Dr. Martinez", "Redfern Group"]
+  "what do we know about accounts ending in 4729?" → ["4729"]
 
 Return ONLY the JSON array, no markdown, no explanation.
 """
@@ -76,12 +91,25 @@ Constraints (HARD):
   against node properties (e.g. WHERE n.name CONTAINS 'value').
   Use the property keys listed in the schema below.
 
-Query patterns:
-- For "how are X and Y connected" or path questions, use shortestPath:
-  MATCH (a), (b) WHERE a.name CONTAINS 'X' AND b.name CONTAINS 'Y'
+Query patterns — choose the right pattern for the question:
+- Connection / path questions ("how are X and Y connected"):
+  MATCH (a), (b) WHERE toLower(a.name) CONTAINS toLower('X')
+  AND toLower(b.name) CONTAINS toLower('Y')
   MATCH p = shortestPath((a)-[*..5]-(b)) RETURN p
-- For neighbourhood exploration, use variable-length paths with LIMIT.
-- Always try to match names case-insensitively (use toLower() or CONTAINS).
+  Use allShortestPaths when the user asks for ALL paths or multiple connections.
+- Neighbourhood exploration ("who is connected to X", "show me X's network"):
+  MATCH (n)-[r*1..2]-(m) WHERE toLower(n.name) CONTAINS toLower('X')
+  RETURN n, r, m LIMIT 50
+- Property lookup ("find entities named X", "what is X's role"):
+  MATCH (n) WHERE toLower(n.name) CONTAINS toLower('X') RETURN n LIMIT 20
+  For multi-property matching, check multiple props:
+  WHERE toLower(n.name) CONTAINS toLower('X') OR toLower(n.title) CONTAINS toLower('X')
+- Type-aware matching (when the user specifies a label like "company" or "person"):
+  MATCH (n:Label) WHERE toLower(n.name) CONTAINS toLower('X') RETURN n
+- Aggregation ("how many", "most connected", "top N"):
+  MATCH (n:Label)-[r]-() RETURN n.name, count(r) AS connections
+  ORDER BY connections DESC LIMIT 10
+- Always try to match names case-insensitively using toLower() on BOTH sides.
 
 Graph schema:
 {schema_summary}
@@ -93,12 +121,6 @@ WHERE clauses instead of guessing. If elementId values are provided, prefer
 matching by elementId(n) for precision.
 
 Routing hint from previous step: {cypher_hint}
-
-Canvas context (what the investigator is currently looking at):
-{canvas_context}
-If the canvas is empty, write a query that directly answers the user's question.
-If the canvas has relevant nodes, prefer queries that complement
-existing data rather than re-fetching it.
 """
 
 GRAPH_RETRIEVAL_RETRY_PROMPT = """\
@@ -159,22 +181,16 @@ Scoring guide:
   medium (0.40–0.74) — partial evidence, some inference.
   low    (0.00–0.39) — weak or no evidence; speculative.
 
-Canvas context (nodes/edges the investigator currently has visible — this is
-real data from the graph, usable as evidence alongside query results):
-{canvas_context}
-
 When answering:
-- Use ALL available evidence: graph query results, canvas context, and
-  document context. The canvas shows confirmed graph data.
-- If the canvas already shows a path or connection that answers the
-  question, reference it directly — do not say "no evidence found".
+- Use ALL available evidence: graph query results and document context.
 - Narrate connections naturally. When describing how entities are related,
   trace the path step by step and name the intermediate nodes and
   relationship types. For example: "A works for B, which is a supplier
   to C" is better than "A is connected to C through a direct relationship".
 - Provide enough detail for the investigator to understand the full picture.
   Enumerate distinct paths when there are multiple connections.
-- Suggest graph_delta that complements the canvas.
+- Always emit a graph_delta with the nodes and edges found in the query
+  results so they can be displayed on the canvas.
 - Do not hallucinate node IDs or relationship types not present in the
   provided data.
 - When citing document chunks include the filename, page number, and chunk

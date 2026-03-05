@@ -1,4 +1,5 @@
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useState } from "react";
+import { Search, Filter, Bookmark, Database, Bot, FileText } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SearchPanel } from "./SearchPanel";
 import { FilterPanel } from "./FilterPanel";
@@ -7,6 +8,19 @@ import { DatabaseOverview } from "./DatabaseOverview";
 import { DocumentLibraryPanel } from "@/components/documents/DocumentLibraryPanel";
 import { useStore } from "@/store";
 import type { CopilotMessage } from "@/lib/types";
+
+// ─── Tab definitions ─────────────────────────────────────────────────────────
+
+const TABS = [
+  { id: "search", icon: Search, label: "Search" },
+  { id: "filters", icon: Filter, label: "Filters" },
+  { id: "findings", icon: Bookmark, label: "Findings" },
+  { id: "database", icon: Database, label: "Database" },
+  { id: "copilot", icon: Bot, label: "Copilot" },
+  { id: "documents", icon: FileText, label: "Documents" },
+] as const;
+
+type TabId = (typeof TABS)[number]["id"];
 
 // ─── Copilot history (read-only transcript) ───────────────────────────────────
 
@@ -40,72 +54,45 @@ function CopilotHistory() {
 // ─── Navigator ────────────────────────────────────────────────────────────────
 
 export function Navigator() {
+  const [activeTab, setActiveTab] = useState<TabId>("search");
+
   return (
-    <Tabs defaultValue="search" className="flex flex-col h-full">
-      <TabsList className="rounded-none border-b border-border bg-card w-full justify-start h-10 p-0 gap-0">
-        <TabsTrigger
-          value="search"
-          className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 h-full text-xs"
-        >
-          Search
-        </TabsTrigger>
-        <TabsTrigger
-          value="filters"
-          className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 h-full text-xs"
-        >
-          Filters
-        </TabsTrigger>
-        <TabsTrigger
-          value="findings"
-          className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 h-full text-xs"
-        >
-          Findings
-        </TabsTrigger>
-        <TabsTrigger
-          value="database"
-          className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 h-full text-xs"
-        >
-          Database
-        </TabsTrigger>
-        <TabsTrigger
-          value="copilot"
-          className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 h-full text-xs"
-        >
-          Copilot
-        </TabsTrigger>
-        <TabsTrigger
-          value="documents"
-          className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 h-full text-xs"
-        >
-          Docs
-        </TabsTrigger>
-      </TabsList>
+    <div className="flex flex-row h-full">
+      {/* Vertical icon sidebar */}
+      <div className="flex flex-col w-10 shrink-0 border-r border-border bg-card">
+        {TABS.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              title={tab.label}
+              className={`w-10 h-10 flex items-center justify-center transition-colors hover:bg-accent/50 ${
+                isActive
+                  ? "border-l-2 border-primary text-foreground"
+                  : "border-l-2 border-transparent text-muted-foreground"
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+            </button>
+          );
+        })}
+      </div>
 
-      <TabsContent value="search" className="flex-1 mt-0 overflow-hidden">
-        <SearchPanel />
-      </TabsContent>
-
-      <TabsContent value="filters" className="flex-1 mt-0 overflow-hidden">
-        <FilterPanel />
-      </TabsContent>
-
-      <TabsContent value="findings" className="flex-1 mt-0 overflow-hidden">
-        <FindingsPanel />
-      </TabsContent>
-
-      <TabsContent value="database" className="flex-1 mt-0 overflow-hidden">
-        <DatabaseOverview />
-      </TabsContent>
-
-      <TabsContent value="copilot" className="flex-1 mt-0 overflow-hidden">
-        <ScrollArea className="h-full">
-          <CopilotHistory />
-        </ScrollArea>
-      </TabsContent>
-
-      <TabsContent value="documents" className="flex-1 mt-0 overflow-hidden">
-        <DocumentLibraryPanel />
-      </TabsContent>
-    </Tabs>
+      {/* Tab content */}
+      <div className="flex-1 overflow-hidden">
+        {activeTab === "search" && <SearchPanel />}
+        {activeTab === "filters" && <FilterPanel />}
+        {activeTab === "findings" && <FindingsPanel />}
+        {activeTab === "database" && <DatabaseOverview />}
+        {activeTab === "copilot" && (
+          <ScrollArea className="h-full">
+            <CopilotHistory />
+          </ScrollArea>
+        )}
+        {activeTab === "documents" && <DocumentLibraryPanel />}
+      </div>
+    </div>
   );
 }

@@ -70,6 +70,18 @@ class SchemaResponse(BaseModel):
     relationship_types: list[RelTypeInfo]
 
 
+class CentralNode(BaseModel):
+    id: str
+    labels: list[str]
+    properties: dict[str, Any]
+    degree: int
+
+
+class GraphOverview(BaseModel):
+    schema_info: SchemaResponse
+    central_nodes: list[CentralNode]
+
+
 # ---------------------------------------------------------------------------
 # Graph query request/response schemas (§14.3)
 # ---------------------------------------------------------------------------
@@ -228,7 +240,6 @@ class CopilotQueryRequest(BaseModel):
     session_id: str
     include_graph_context: bool = True
     model_assignments: dict[str, str] | None = None
-    canvas_summary: str | None = None
 
 
 class CopilotMessage(BaseModel):
