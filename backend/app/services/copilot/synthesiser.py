@@ -158,11 +158,64 @@ def _format_doc_chunks(chunks: list[DocumentChunk]) -> str:
     return "\n".join(lines).strip()
 
 
+def _is_path(value: Any) -> bool:
+    """Return True if *value* looks like a Neo4j path (alternating nodes/edges)."""
+    if not isinstance(value, list) or len(value) < 3:
+        return False
+    # Even-indexed items should be nodes (have "labels"),
+    # odd-indexed items should be edges (have "type").
+    for i, elem in enumerate(value):
+        if not isinstance(elem, dict):
+            return False
+        if i % 2 == 0:
+            if "labels" not in elem:
+                return False
+        else:
+            if "type" not in elem:
+                return False
+    return True
+
+
+def _node_display(node: dict[str, Any]) -> str:
+    """Format a node dict as ``(name [Label])``."""
+    props = node.get("properties", {})
+    name = (
+        props.get("name")
+        or props.get("title")
+        or props.get("_primary_value")
+        or node.get("id", "?")
+    )
+    labels = node.get("labels", [])
+    label_str = labels[0] if labels else "?"
+    return f"({name} [{label_str}])"
+
+
+def _format_path(path: list[dict[str, Any]]) -> str:
+    """Convert an alternating node/edge list into a human-readable string."""
+    parts: list[str] = []
+    for i, elem in enumerate(path):
+        if i % 2 == 0:
+            parts.append(_node_display(elem))
+        else:
+            rel_type = elem.get("type", "RELATED_TO")
+            parts.append(f"-[{rel_type}]->")
+    return "Path: " + " ".join(parts)
+
+
 def _format_graph_results(rows: list[dict[str, Any]]) -> str:
     """Serialise graph rows for inclusion in the prompt."""
     if not rows:
         return "(no graph results)"
-    text = json.dumps(rows[:50], default=str)
+    formatted_rows: list[dict[str, Any]] = []
+    for row in rows[:50]:
+        formatted: dict[str, Any] = {}
+        for k, v in row.items():
+            if _is_path(v):
+                formatted[k] = _format_path(v)
+            else:
+                formatted[k] = v
+        formatted_rows.append(formatted)
+    text = json.dumps(formatted_rows, default=str)
     if len(text) > _MAX_GRAPH_RESULTS_CHARS:
         text = text[:_MAX_GRAPH_RESULTS_CHARS] + "... (truncated)"
     return text
