@@ -2,7 +2,7 @@
   "hooks": {
     "PostToolUse": [
       {
-        "matcher": "Edit:*.py",
+        "matcher": "Edit:.*\\.py$",
         "hooks": [
           {
             "type": "command",
@@ -12,7 +12,7 @@
         ]
       },
       {
-        "matcher": "Write:*.py",
+        "matcher": "Write:.*\\.py$",
         "hooks": [
           {
             "type": "command",
@@ -22,7 +22,7 @@
         ]
       },
       {
-        "matcher": "Edit:*.ts|*.tsx",
+        "matcher": "Edit:.*\\.tsx?$",
         "hooks": [
           {
             "type": "command",
@@ -32,7 +32,7 @@
         ]
       },
       {
-        "matcher": "Write:*.ts|*.tsx",
+        "matcher": "Write:.*\\.tsx?$",
         "hooks": [
           {
             "type": "command",
