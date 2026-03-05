@@ -37,6 +37,8 @@ export type Neo4jConnectionStatus =
 
 export type CopilotStatus = "ready" | "unconfigured" | "unknown";
 
+export type VectorStoreStatus = "ready" | "unconfigured" | "degraded" | "unknown";
+
 export interface DevLogEntry {
   id: string;
   timestamp: number;
@@ -71,6 +73,10 @@ export interface MonitoringSlice {
   // Copilot status
   copilotStatus: CopilotStatus;
   setCopilotStatus: (status: CopilotStatus) => void;
+
+  // Vector store status
+  vectorStoreStatus: VectorStoreStatus;
+  setVectorStoreStatus: (status: VectorStoreStatus) => void;
 
   // Dev panel (dev mode only)
   devLogs: DevLogEntry[];
@@ -150,6 +156,13 @@ export const createMonitoringSlice: StateCreator<
 
   setCopilotStatus: (status) => {
     set({ copilotStatus: status });
+  },
+
+  // -- Vector store status --------------------------------------------------
+  vectorStoreStatus: "unknown",
+
+  setVectorStoreStatus: (status) => {
+    set({ vectorStoreStatus: status });
   },
 
   // -- Dev panel ------------------------------------------------------------

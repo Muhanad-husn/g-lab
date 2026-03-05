@@ -247,6 +247,11 @@ export interface EvidenceSource {
   type: "graph_path" | "doc_chunk";
   id: string;
   content: string;
+  // Optional metadata for doc_chunk type
+  filename?: string;
+  page_number?: number | null;
+  section_heading?: string | null;
+  parse_tier?: ParseTier;
 }
 
 // ─── Phase 2: SSE Events ──────────────────────────────────────────────────────

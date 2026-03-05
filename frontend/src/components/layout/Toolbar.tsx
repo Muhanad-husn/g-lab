@@ -51,6 +51,49 @@ function StatusDot() {
   );
 }
 
+// ─── Vector store status indicator ───────────────────────────────────────────
+
+function VectorStoreDot() {
+  const status = useStore((s) => s.vectorStoreStatus);
+  const attachedLibraryId = useStore((s) => s.attachedLibraryId);
+  const libraries = useStore((s) => s.libraries);
+
+  const attachedLibrary = attachedLibraryId
+    ? libraries.find((l) => l.id === attachedLibraryId)
+    : null;
+
+  const color =
+    status === "ready"
+      ? "bg-violet-400"
+      : status === "unconfigured"
+        ? "bg-muted-foreground"
+        : status === "degraded"
+          ? "bg-red-500"
+          : "bg-muted-foreground/50";
+
+  const baseLabel =
+    status === "ready"
+      ? "Docs ready"
+      : status === "unconfigured"
+        ? "Docs unconfigured"
+        : status === "degraded"
+          ? "Docs degraded"
+          : "Docs status unknown";
+
+  const title = attachedLibrary
+    ? `${baseLabel} — attached: ${attachedLibrary.name}`
+    : baseLabel;
+
+  return (
+    <span className="flex items-center gap-1.5" title={title}>
+      <span className={`h-2 w-2 rounded-full ${color}`} />
+      <span className="text-xs text-muted-foreground hidden xl:inline truncate max-w-32">
+        {attachedLibrary ? attachedLibrary.name : baseLabel}
+      </span>
+    </span>
+  );
+}
+
 // ─── Copilot status indicator ─────────────────────────────────────────────────
 
 function CopilotStatusDot() {
@@ -735,6 +778,7 @@ export function Toolbar() {
 
           <StatusDot />
           <CopilotStatusDot />
+          <VectorStoreDot />
         </div>
       </header>
 
