@@ -25,7 +25,15 @@ function ResultItem({ node, onAdd, onAddExpand }: ResultItemProps) {
     node.id;
 
   return (
-    <div className="flex items-center justify-between gap-2 px-3 py-2 hover:bg-accent/50 rounded-sm">
+    <div
+      className="flex items-center justify-between gap-2 px-3 py-2 hover:bg-accent/50 rounded-sm cursor-pointer"
+      onClick={() => onAdd(node)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") onAdd(node);
+      }}
+    >
       <div className="flex items-center gap-2 min-w-0">
         <Badge variant="outline" className="shrink-0 text-xs">
           {label}
@@ -39,7 +47,10 @@ function ResultItem({ node, onAdd, onAddExpand }: ResultItemProps) {
           variant="ghost"
           size="sm"
           className="h-6 px-2 text-xs"
-          onClick={() => onAdd(node)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onAdd(node);
+          }}
           title="Add to canvas"
         >
           Add
@@ -48,7 +59,10 @@ function ResultItem({ node, onAdd, onAddExpand }: ResultItemProps) {
           variant="ghost"
           size="sm"
           className="h-6 px-2 text-xs"
-          onClick={() => onAddExpand(node)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onAddExpand(node);
+          }}
           title="Add to canvas and expand neighbours"
         >
           +Expand

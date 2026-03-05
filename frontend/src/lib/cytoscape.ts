@@ -52,11 +52,14 @@ export const LAYOUT_CONFIGS: Record<LayoutName, AnyLayoutOpts> = {
   },
 };
 
-export function createCytoscapeInstance(container: HTMLElement): cytoscape.Core {
+export function createCytoscapeInstance(
+  container: HTMLElement,
+  style: cytoscape.StylesheetStyle[] = [],
+): cytoscape.Core {
   return cytoscape({
     container,
     elements: [],
-    style: [],
+    style,
     userZoomingEnabled: true,
     userPanningEnabled: true,
     boxSelectionEnabled: true,

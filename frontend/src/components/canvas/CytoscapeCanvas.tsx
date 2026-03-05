@@ -17,14 +17,25 @@ export function CytoscapeCanvas() {
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const instance = createCytoscapeInstance(containerRef.current);
-    instance.style(CY_STYLESHEET);
+    const instance = createCytoscapeInstance(containerRef.current, CY_STYLESHEET);
     cytoscapeRef.current = instance;
     setCy(instance);
 
     // Notify Cytoscape when the panel is resized (react-resizable-panels)
-    const observer = new ResizeObserver(() => {
+    let hadZeroDimensions = true;
+    const observer = new ResizeObserver((entries) => {
       instance.resize();
+      // If container was 0-sized when nodes were added, refit after first real resize
+      const entry = entries[0];
+      if (hadZeroDimensions && entry) {
+        const { width, height } = entry.contentRect;
+        if (width > 0 && height > 0) {
+          hadZeroDimensions = false;
+          if (instance.nodes().length > 0) {
+            instance.fit(undefined, 30);
+          }
+        }
+      }
     });
     observer.observe(containerRef.current);
 
