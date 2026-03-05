@@ -4,6 +4,7 @@ import { SearchPanel } from "./SearchPanel";
 import { FilterPanel } from "./FilterPanel";
 import { FindingsPanel } from "./FindingsPanel";
 import { DatabaseOverview } from "./DatabaseOverview";
+import { DocumentLibraryPanel } from "@/components/documents/DocumentLibraryPanel";
 import { useStore } from "@/store";
 import type { CopilotMessage } from "@/lib/types";
 
@@ -72,6 +73,12 @@ export function Navigator() {
         >
           Copilot
         </TabsTrigger>
+        <TabsTrigger
+          value="documents"
+          className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 h-full text-xs"
+        >
+          Docs
+        </TabsTrigger>
       </TabsList>
 
       <TabsContent value="search" className="flex-1 mt-0 overflow-hidden">
@@ -94,6 +101,10 @@ export function Navigator() {
         <ScrollArea className="h-full">
           <CopilotHistory />
         </ScrollArea>
+      </TabsContent>
+
+      <TabsContent value="documents" className="flex-1 mt-0 overflow-hidden">
+        <DocumentLibraryPanel />
       </TabsContent>
     </Tabs>
   );
