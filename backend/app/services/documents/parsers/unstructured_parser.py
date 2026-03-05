@@ -96,7 +96,7 @@ class UnstructuredParser:
     def _parse_pdf(self, file_path: Path) -> ParseResult:
         """Partition a PDF with ``unstructured`` and convert to sections."""
         try:
-            from unstructured.partition.pdf import partition_pdf  # type: ignore[import]
+            from unstructured.partition.pdf import partition_pdf
         except ImportError as exc:
             raise ParseError(
                 "unstructured[pdf] is not installed. Cannot parse PDF."
@@ -128,7 +128,7 @@ class UnstructuredParser:
         """Partition a DOCX with ``unstructured`` and convert to sections."""
         try:
             from unstructured.partition.docx import (
-                partition_docx,  # type: ignore[import]
+                partition_docx,
             )
         except ImportError as exc:
             raise ParseError(
