@@ -151,6 +151,53 @@ Toggle **Advanced Mode** in the toolbar to assign individual models per pipeline
 
 ---
 
+## Document Library (Phase 3)
+
+G-Lab can ground Copilot answers in your own documents — PDFs and DOCX files stored locally in ChromaDB.
+
+### Setup
+
+ChromaDB is included in `docker-compose.yml` and starts automatically. No additional configuration is required for the default setup.
+
+| Service  | URL                   |
+| -------- | --------------------- |
+| ChromaDB | http://localhost:8100 |
+
+The vector store status dot in the toolbar turns green when ChromaDB is reachable.
+
+### Supported File Types
+
+| Format | Extensions         |
+| ------ | ------------------ |
+| PDF    | `.pdf`             |
+| Word   | `.docx`            |
+
+Maximum upload size: **50 MB** per file. Maximum **100 documents** per library.
+
+### Parse Quality Tiers
+
+Documents are parsed in tier order — highest quality first, falling back automatically:
+
+| Tier         | Library            | Quality | Use case                             |
+| ------------ | ------------------ | ------- | ------------------------------------ |
+| **high**     | docling            | Best    | Structured PDFs with headings/tables |
+| **standard** | unstructured       | Good    | General PDFs and DOCX files          |
+| **basic**    | PyPDF2/python-docx | Fast    | Plain text extraction fallback       |
+
+The parse tier badge appears on each document after upload.
+
+### Attach/Detach Workflow
+
+1. Open the **Documents** tab in the Navigator.
+2. Create a library and upload files.
+3. Click **Attach** to link the library to the current session — only one library can be attached at a time.
+4. Ask the Copilot a question. When it needs documents, it automatically retrieves relevant chunks, re-ranks them, and cites them alongside graph evidence.
+5. Click **Detach** to stop using the library for this session.
+
+Session exports include a `vector_manifest.json` listing the library name and document filenames (not the document contents themselves).
+
+---
+
 ## Roadmap
 
 | Phase | Description                                           | Status      |
@@ -158,7 +205,7 @@ Toggle **Advanced Mode** in the toolbar to assign individual models per pipeline
 | 0     | Project bootstrap — tooling, logging, cache           | Complete    |
 | 1     | Core workbench — canvas, sessions, Neo4j proxy        | Complete    |
 | 2     | AI Copilot — LLM-assisted query and summarisation     | Complete    |
-| 3     | Document store — ChromaDB vector search, findings     | Planned     |
+| 3     | Document store — ChromaDB vector search, grounding    | Complete    |
 
 ---
 

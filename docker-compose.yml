@@ -1,4 +1,18 @@
 services:
+  chromadb:
+    image: chromadb/chroma:latest
+    ports:
+      - "127.0.0.1:8100:8000"
+    volumes:
+      - chroma-data:/chroma/chroma
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/heartbeat')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
   backend:
     build:
       context: ./backend
@@ -15,6 +29,12 @@ services:
       - GLAB_LOG_LEVEL=${GLAB_LOG_LEVEL:-INFO}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      - CHROMA_HOST=${CHROMA_HOST:-chromadb}
+      - CHROMA_PORT=${CHROMA_PORT:-8000}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-all-MiniLM-L6-v2}
+    depends_on:
+      chromadb:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test:
@@ -46,3 +66,4 @@ services:
 
 volumes:
   glab-data:
+  chroma-data:
