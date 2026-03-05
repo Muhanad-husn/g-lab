@@ -304,3 +304,55 @@ export interface ModelInfo {
   context_length?: number;
   pricing?: { prompt: string; completion: string };
 }
+
+// ─── Phase 3: Document Libraries ──────────────────────────────────────────────
+// Source of truth: docs/ARCHITECTURE.md §14 / backend DocumentLibraryResponse
+
+export type ParseTier = "high" | "standard" | "basic";
+
+export interface DocumentLibrary {
+  id: string;
+  name: string;
+  created_at: string;
+  doc_count: number;
+  chunk_count: number;
+  parse_quality: ParseTier | null;
+  indexed_at: string | null;
+}
+
+export interface DocumentInfo {
+  id: string;
+  library_id: string;
+  filename: string;
+  file_hash: string;
+  parse_tier: ParseTier;
+  chunk_count: number;
+  uploaded_at: string;
+}
+
+export interface DocumentUploadResponse {
+  document_id: string;
+  filename: string;
+  parse_tier: ParseTier;
+  chunk_count: number;
+}
+
+export interface ChunkMetadata {
+  document_id: string;
+  library_id: string;
+  page_number: number | null;
+  section_heading: string | null;
+  chunk_index: number;
+  parse_tier: ParseTier;
+}
+
+export interface DocumentChunk {
+  id: string;
+  text: string;
+  metadata: ChunkMetadata;
+  similarity_score?: number;
+}
+
+export interface LibraryAttachRequest {
+  session_id: string;
+}

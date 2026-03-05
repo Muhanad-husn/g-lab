@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { createConfigSlice, type ConfigSlice } from "./configSlice";
 import { createCopilotSlice, type CopilotSlice } from "./copilotSlice";
+import { createDocumentSlice, type DocumentSlice } from "./documentSlice";
 import { createGraphSlice, type GraphSlice } from "./graphSlice";
 import { createMonitoringSlice, type MonitoringSlice } from "./monitoringSlice";
 import { createSessionSlice, type SessionSlice } from "./sessionSlice";
@@ -13,7 +14,8 @@ export type AllSlices = GraphSlice &
   UiSlice &
   ConfigSlice &
   MonitoringSlice &
-  CopilotSlice;
+  CopilotSlice &
+  DocumentSlice;
 
 // ─── Bound store ───────────────────────────────────────────────────────────────
 
@@ -24,4 +26,5 @@ export const useStore = create<AllSlices>()((...a) => ({
   ...createConfigSlice(...a),
   ...createMonitoringSlice(...a),
   ...createCopilotSlice(...a),
+  ...createDocumentSlice(...a),
 }));

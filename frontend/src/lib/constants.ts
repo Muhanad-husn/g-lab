@@ -67,3 +67,14 @@ export const SSE_EVENT_TYPES = [
   "done",
   "error",
 ] as const;
+
+// ─── Phase 3: Document Library constants ──────────────────────────────────────
+
+export const MAX_DOC_UPLOAD_SIZE_MB = 50;
+export const MAX_DOCS_PER_LIBRARY = 100;
+
+export const PARSE_QUALITY_TIERS = {
+  high: { label: "High", description: "Structured extraction (Docling)" },
+  standard: { label: "Standard", description: "General extraction (Unstructured)" },
+  basic: { label: "Basic", description: "Raw text fallback" },
+} as const;
