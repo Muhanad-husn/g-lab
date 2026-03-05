@@ -31,6 +31,8 @@ class GuardrailService:
         "cypher_timeout_ms": 30_000,
         "copilot_timeout_ms": 120_000,
         "max_concurrent_copilot": 1,
+        "max_doc_upload_size_mb": 50,
+        "max_docs_per_library": 100,
     }
 
     # Warning threshold: warn when canvas is at or above this.
@@ -134,6 +136,41 @@ class GuardrailService:
                 allowed=False,
                 detail={"message": "Copilot is already processing a request"},
             )
+        return GuardrailResult(allowed=True)
+
+    def check_doc_upload(
+        self,
+        file_size_bytes: int,
+        library_doc_count: int,
+    ) -> GuardrailResult:
+        """Check document upload guardrails.
+
+        Args:
+            file_size_bytes: Size of the file being uploaded in bytes.
+            library_doc_count: Current number of documents in the library.
+        """
+        max_size_mb = self.HARD_LIMITS["max_doc_upload_size_mb"]
+        max_docs = self.HARD_LIMITS["max_docs_per_library"]
+
+        file_size_mb = file_size_bytes / (1024 * 1024)
+        if file_size_mb > max_size_mb:
+            return GuardrailResult(
+                allowed=False,
+                detail={
+                    "file_size_mb": round(file_size_mb, 2),
+                    "hard_limit_mb": max_size_mb,
+                },
+            )
+
+        if library_doc_count >= max_docs:
+            return GuardrailResult(
+                allowed=False,
+                detail={
+                    "current_doc_count": library_doc_count,
+                    "hard_limit": max_docs,
+                },
+            )
+
         return GuardrailResult(allowed=True)
 
     @staticmethod

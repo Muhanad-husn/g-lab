@@ -105,6 +105,44 @@ class ConversationMessage(Base):
     metadata_json: Mapped[str | None] = mapped_column("metadata", Text, nullable=True)
 
 
+class DocumentLibrary(Base):
+    """Workspace-scoped document library entry."""
+
+    __tablename__ = "document_libraries"
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[str] = mapped_column(Text, nullable=False)
+    doc_count: Mapped[int] = mapped_column(default=0)
+    chunk_count: Mapped[int] = mapped_column(default=0)
+    parse_quality: Mapped[str | None] = mapped_column(Text, nullable=True)
+    indexed_at: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class Document(Base):
+    """Individual document stored inside a library."""
+
+    __tablename__ = "documents"
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    library_id: Mapped[str] = mapped_column(Text, nullable=False)
+    filename: Mapped[str] = mapped_column(Text, nullable=False)
+    file_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    parse_tier: Mapped[str] = mapped_column(Text, nullable=False)
+    chunk_count: Mapped[int] = mapped_column(default=0)
+    uploaded_at: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class SessionLibraryAttachment(Base):
+    """Maps a session to its currently attached library (at most one)."""
+
+    __tablename__ = "session_library_attachments"
+
+    session_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    library_id: Mapped[str] = mapped_column(Text, nullable=False)
+    attached_at: Mapped[str] = mapped_column(Text, nullable=False)
+
+
 def _set_wal_mode(dbapi_conn: Any, _connection_record: Any) -> None:
     """Enable WAL journal mode for SQLite."""
     cursor = dbapi_conn.cursor()

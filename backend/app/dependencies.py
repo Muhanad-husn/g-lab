@@ -12,6 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.config import Settings
 from app.services.action_log import ActionLogger
 from app.services.copilot.openrouter import OpenRouterClient
+from app.services.documents.chromadb_client import ChromaDBClient
+from app.services.documents.embeddings import EmbeddingService
 from app.services.neo4j_service import Neo4jService
 
 # Set during lifespan startup in main.py.
@@ -61,6 +63,16 @@ def get_copilot_semaphore(request: Request) -> asyncio.Semaphore:
     if semaphore is None:
         raise RuntimeError("Copilot semaphore not initialised — lifespan not started")
     return semaphore
+
+
+def get_chromadb(request: Request) -> ChromaDBClient | None:
+    """Return the ChromaDBClient from app state, or None if not configured."""
+    return getattr(request.app.state, "chromadb_client", None)
+
+
+def get_embedding_service(request: Request) -> EmbeddingService | None:
+    """Return the EmbeddingService from app state, or None if not configured."""
+    return getattr(request.app.state, "embedding_service", None)
 
 
 def get_neo4j(request: Request) -> Neo4jService:

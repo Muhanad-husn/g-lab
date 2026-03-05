@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     OPENROUTER_API_KEY: str = ""
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
 
+    # ChromaDB vector store (Phase 3 — Document grounding)
+    CHROMA_HOST: str = "chromadb"
+    CHROMA_PORT: int = 8000
+    EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
+
     # Application
     GLAB_DATA_DIR: Path = Path("/data")
     GLAB_LOG_LEVEL: str = "INFO"
