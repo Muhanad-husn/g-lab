@@ -45,6 +45,7 @@ export interface CanvasState {
   filters: {
     hidden_labels: string[];
     hidden_types: string[];
+    collapsed_labels?: string[];
   };
 }
 

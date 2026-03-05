@@ -111,6 +111,28 @@ export const CY_STYLESHEET: cytoscape.StylesheetStyle[] = [
     },
   },
 
+  // ── Collapsed placeholders ────────────────────────────────────────────────
+  {
+    selector: "node.collapsed-placeholder",
+    style: {
+      shape: "diamond",
+      width: 50,
+      height: 50,
+      "border-width": 2,
+      "border-style": "dashed",
+      "border-color": "#94a3b8",
+      opacity: 0.85,
+      "font-style": "italic",
+    },
+  },
+  {
+    selector: "edge.collapsed-placeholder",
+    style: {
+      "line-style": "dashed",
+      opacity: 0.5,
+    },
+  },
+
   // ── Ghost elements (Phase 2 — AI-proposed, non-interactive) ───────────────
   {
     selector: "node.ghost",

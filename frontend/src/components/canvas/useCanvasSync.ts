@@ -43,15 +43,24 @@ export function useCanvasSync(cy: cytoscape.Core | null): void {
     if (!cy) return;
 
     // Compute delta between current cy state and the store
-    const currentNodeIds = new Set(cy.nodes().map((n) => n.id()));
-    const currentEdgeIds = new Set(cy.edges().map((e) => e.id()));
+    // Exclude collapsed placeholders from diff — they are managed by filter sync
+    const currentNodeIds = new Set(
+      cy.nodes().filter((n) => !n.hasClass("collapsed-placeholder")).map((n) => n.id()),
+    );
+    const currentEdgeIds = new Set(
+      cy.edges().filter((e) => !e.hasClass("collapsed-placeholder")).map((e) => e.id()),
+    );
     const storeNodeIds = new Set(nodes.map((n) => n.id));
     const storeEdgeIds = new Set(edges.map((e) => e.id));
 
     const nodesToAdd = nodes.filter((n) => !currentNodeIds.has(n.id));
     const edgesToAdd = edges.filter((e) => !currentEdgeIds.has(e.id));
-    const nodesToRemove = cy.nodes().filter((n) => !storeNodeIds.has(n.id()));
-    const edgesToRemove = cy.edges().filter((e) => !storeEdgeIds.has(e.id()));
+    const nodesToRemove = cy
+      .nodes()
+      .filter((n) => !n.hasClass("collapsed-placeholder") && !storeNodeIds.has(n.id()));
+    const edgesToRemove = cy
+      .edges()
+      .filter((e) => !e.hasClass("collapsed-placeholder") && !storeEdgeIds.has(e.id()));
 
     const hasChanges =
       nodesToAdd.length > 0 ||
@@ -106,7 +115,10 @@ export function useCanvasSync(cy: cytoscape.Core | null): void {
     const writeAllPositions = () => {
       const positions: Record<string, { x: number; y: number }> = {};
       cy.nodes().forEach((n) => {
-        positions[n.id()] = n.position();
+        const id = n.id();
+        // Skip collapsed placeholders and proxy edges
+        if (id.startsWith("__collapsed__") || id.startsWith("__proxy__")) return;
+        positions[id] = n.position();
       });
       setPositions(positions);
     };
@@ -139,6 +151,8 @@ export function useCanvasSync(cy: cytoscape.Core | null): void {
         clearSelection();
       } else {
         const el = evt.target as cytoscape.SingularElementArgument;
+        // Ignore taps on collapsed placeholders
+        if (el.hasClass("collapsed-placeholder")) return;
         setSelectedIds([el.id()]);
       }
     };
@@ -197,34 +211,123 @@ export function useCanvasSync(cy: cytoscape.Core | null): void {
     };
   }, [cy, pendingDelta]);
 
-  // ─── Filter sync: store filters → cy visibility ───────────────────────────
+  // ─── Filter sync: store filters → cy visibility + collapse placeholders ───
   // Note: hide()/show() are not in @types/cytoscape; use style('display',...).
   useEffect(() => {
     if (!cy) return;
 
     cy.batch(() => {
-      const labelHidden = cy.nodes().filter((n) => {
+      // 1. Remove previous placeholders
+      cy.remove(".collapsed-placeholder");
+
+      // Partition real nodes (not ghost) into hidden / collapsed / visible
+      const realNodes = cy.nodes().filter((n) => !n.hasClass("ghost"));
+      const hiddenSet = new Set(filters.hidden_labels);
+      const collapsedSet = new Set(filters.collapsed_labels);
+
+      const hiddenNodes = realNodes.filter((n) => {
         const labels = n.data("labels") as string[];
-        return labels.some((l) => filters.hidden_labels.includes(l));
+        return labels.some((l) => hiddenSet.has(l));
       });
-      const labelHiddenIds = new Set(labelHidden.map((n) => n.id()));
+      const hiddenNodeIds = new Set(hiddenNodes.map((n) => n.id()));
 
-      labelHidden.style("display", "none");
-      cy.nodes().not(labelHidden).style("display", "element");
+      const collapsedNodes = realNodes.filter((n) => {
+        if (hiddenNodeIds.has(n.id())) return false;
+        const labels = n.data("labels") as string[];
+        return labels.some((l) => collapsedSet.has(l));
+      });
+      const collapsedNodeIds = new Set(collapsedNodes.map((n) => n.id()));
 
-      // Hide edges whose type is filtered OR whose endpoint node is hidden
-      const edgeHidden = cy.edges().filter((e) => {
-        const typeHidden = filters.hidden_types.includes(
-          e.data("type") as string,
-        );
+      // 2. Apply display styles to real nodes
+      hiddenNodes.style("display", "none");
+      collapsedNodes.style("display", "none");
+      realNodes
+        .filter((n) => !hiddenNodeIds.has(n.id()) && !collapsedNodeIds.has(n.id()))
+        .style("display", "element");
+
+      // 3. Create placeholder nodes for each collapsed label
+      const invisibleNodeIds = new Set([...hiddenNodeIds, ...collapsedNodeIds]);
+
+      for (const label of filters.collapsed_labels) {
+        // Gather nodes that belong to this collapsed label (and aren't already hidden)
+        const nodesForLabel = collapsedNodes.filter((n) => {
+          const labels = n.data("labels") as string[];
+          return labels.includes(label);
+        });
+        if (nodesForLabel.length === 0) continue;
+
+        // Compute centroid position
+        let cx = 0;
+        let cy2 = 0;
+        nodesForLabel.forEach((n) => {
+          const pos = n.position();
+          cx += pos.x;
+          cy2 += pos.y;
+        });
+        cx /= nodesForLabel.length;
+        cy2 /= nodesForLabel.length;
+
+        const firstColor = nodesForLabel[0].data("labelColor") as string;
+        const placeholderId = `__collapsed__${label}`;
+
+        cy.add({
+          group: "nodes",
+          data: {
+            id: placeholderId,
+            displayLabel: `${label} (${nodesForLabel.length})`,
+            labelColor: firstColor,
+            labels: [label],
+          },
+          position: { x: cx, y: cy2 },
+          classes: "collapsed-placeholder",
+        });
+
+        // 4. Create proxy edges: scan edges of collapsed nodes
+        const proxyEdgeSet = new Set<string>();
+        nodesForLabel.forEach((n) => {
+          n.connectedEdges().forEach((e) => {
+            const srcId = e.source().id();
+            const tgtId = e.target().id();
+            const edgeType = e.data("type") as string;
+
+            // Determine the "other" endpoint
+            const otherId = srcId === n.id() ? tgtId : srcId;
+
+            // Only create proxy if the other end is visible (not collapsed/hidden)
+            if (invisibleNodeIds.has(otherId)) return;
+
+            const proxyKey = `${placeholderId}|${otherId}|${edgeType}`;
+            if (proxyEdgeSet.has(proxyKey)) return;
+            proxyEdgeSet.add(proxyKey);
+
+            const proxyEdgeId = `__proxy__${placeholderId}__${otherId}__${edgeType}`;
+            cy.add({
+              group: "edges",
+              data: {
+                id: proxyEdgeId,
+                source: srcId === n.id() ? placeholderId : otherId,
+                target: tgtId === n.id() ? placeholderId : otherId,
+                type: edgeType,
+                edgeLabel: edgeType,
+              },
+              classes: "collapsed-placeholder",
+            });
+          });
+        });
+      }
+
+      // 5. Edge visibility: hide edges whose type is filtered OR whose endpoint is invisible
+      const allRealEdges = cy.edges().not(".collapsed-placeholder");
+      const edgeHidden = allRealEdges.filter((e: cytoscape.EdgeSingular) => {
+        const typeHidden = filters.hidden_types.includes(e.data("type") as string);
         const nodeHidden =
-          labelHiddenIds.has(e.source().id()) ||
-          labelHiddenIds.has(e.target().id());
+          invisibleNodeIds.has(e.source().id()) ||
+          invisibleNodeIds.has(e.target().id());
         return typeHidden || nodeHidden;
       });
 
       edgeHidden.style("display", "none");
-      cy.edges().not(edgeHidden).style("display", "element");
+      allRealEdges.not(edgeHidden).style("display", "element");
     });
   }, [cy, filters]);
 }

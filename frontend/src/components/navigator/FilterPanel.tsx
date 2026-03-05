@@ -1,8 +1,9 @@
+import { Layers } from "lucide-react";
 import { useStore } from "@/store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 
-// ─── Toggle row ───────────────────────────────────────────────────────────────
+// ─── Toggle row (for edge types — unchanged two-state) ──────────────────────
 
 interface ToggleRowProps {
   label: string;
@@ -16,7 +17,13 @@ function ToggleRow({ label, hidden, onToggle }: ToggleRowProps) {
       onClick={onToggle}
       className="flex w-full items-center justify-between px-3 py-1.5 text-xs hover:bg-accent/50 rounded-sm transition-colors"
     >
-      <span className={hidden ? "text-muted-foreground line-through" : "text-foreground"}>
+      <span
+        className={
+          hidden
+            ? "text-muted-foreground line-through"
+            : "text-foreground"
+        }
+      >
         {label}
       </span>
       <span
@@ -27,6 +34,55 @@ function ToggleRow({ label, hidden, onToggle }: ToggleRowProps) {
         }`}
       >
         {hidden ? "" : "✓"}
+      </span>
+    </button>
+  );
+}
+
+// ─── Label row (three-state: visible → collapsed → hidden) ──────────────────
+
+type LabelState = "visible" | "collapsed" | "hidden";
+
+interface LabelRowProps {
+  label: string;
+  count: number;
+  state: LabelState;
+  onCycle: () => void;
+}
+
+function LabelRow({ label, count, state, onCycle }: LabelRowProps) {
+  return (
+    <button
+      onClick={onCycle}
+      className="flex w-full items-center justify-between px-3 py-1.5 text-xs hover:bg-accent/50 rounded-sm transition-colors"
+    >
+      <span
+        className={
+          state === "hidden"
+            ? "text-muted-foreground line-through"
+            : state === "collapsed"
+              ? "text-muted-foreground italic"
+              : "text-foreground"
+        }
+      >
+        {label} ({count})
+      </span>
+      <span
+        className={`h-4 w-4 rounded border text-[10px] flex items-center justify-center ${
+          state === "visible"
+            ? "border-primary bg-primary text-primary-foreground"
+            : state === "collapsed"
+              ? "border-amber-500 text-amber-500"
+              : "border-muted-foreground text-muted-foreground"
+        }`}
+      >
+        {state === "visible" ? (
+          "✓"
+        ) : state === "collapsed" ? (
+          <Layers className="h-2.5 w-2.5" />
+        ) : (
+          "—"
+        )}
       </span>
     </button>
   );
@@ -44,11 +100,41 @@ export function FilterPanel() {
   const labels = [...new Set(nodes.flatMap((n) => n.labels))].sort();
   const types = [...new Set(edges.map((e) => e.type))].sort();
 
-  function toggleLabel(label: string) {
-    const hidden = filters.hidden_labels.includes(label)
-      ? filters.hidden_labels.filter((l) => l !== label)
-      : [...filters.hidden_labels, label];
-    setFilters({ hidden_labels: hidden });
+  // Count nodes per label
+  const labelCounts = new Map<string, number>();
+  for (const node of nodes) {
+    for (const label of node.labels) {
+      labelCounts.set(label, (labelCounts.get(label) ?? 0) + 1);
+    }
+  }
+
+  function getLabelState(label: string): LabelState {
+    if (filters.collapsed_labels.includes(label)) return "collapsed";
+    if (filters.hidden_labels.includes(label)) return "hidden";
+    return "visible";
+  }
+
+  function cycleLabelState(label: string) {
+    const state = getLabelState(label);
+    if (state === "visible") {
+      // visible → collapsed
+      setFilters({
+        collapsed_labels: [...filters.collapsed_labels, label],
+      });
+    } else if (state === "collapsed") {
+      // collapsed → hidden
+      setFilters({
+        collapsed_labels: filters.collapsed_labels.filter(
+          (l) => l !== label,
+        ),
+        hidden_labels: [...filters.hidden_labels, label],
+      });
+    } else {
+      // hidden → visible
+      setFilters({
+        hidden_labels: filters.hidden_labels.filter((l) => l !== label),
+      });
+    }
   }
 
   function toggleType(type: string) {
@@ -75,11 +161,12 @@ export function FilterPanel() {
               Node Labels
             </p>
             {labels.map((label) => (
-              <ToggleRow
+              <LabelRow
                 key={label}
                 label={label}
-                hidden={filters.hidden_labels.includes(label)}
-                onToggle={() => toggleLabel(label)}
+                count={labelCounts.get(label) ?? 0}
+                state={getLabelState(label)}
+                onCycle={() => cycleLabelState(label)}
               />
             ))}
           </>

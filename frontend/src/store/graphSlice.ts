@@ -6,6 +6,7 @@ import type { GraphEdge, GraphNode } from "@/lib/types";
 export interface GraphFilters {
   hidden_labels: string[];
   hidden_types: string[];
+  collapsed_labels: string[];
 }
 
 export interface GraphSlice {
@@ -36,7 +37,7 @@ export const createGraphSlice: StateCreator<
   nodes: [],
   edges: [],
   positions: {},
-  filters: { hidden_labels: [], hidden_types: [] },
+  filters: { hidden_labels: [], hidden_types: [], collapsed_labels: [] },
 
   addNodes: (incoming) =>
     set((state) => {
@@ -81,6 +82,6 @@ export const createGraphSlice: StateCreator<
       nodes: [],
       edges: [],
       positions: {},
-      filters: { hidden_labels: [], hidden_types: [] },
+      filters: { hidden_labels: [], hidden_types: [], collapsed_labels: [] },
     }),
 });

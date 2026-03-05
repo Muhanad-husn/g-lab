@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Download, Pencil, Plug, Settings, Upload } from "lucide-react";
+import { Download, Pencil, Plug, Settings, Trash2, Upload } from "lucide-react";
 import iconDark from "@/assets/icon-dark.svg";
 import iconLight from "@/assets/icon-light.svg";
 import { Button } from "@/components/ui/button";
@@ -816,11 +816,13 @@ export function Toolbar() {
   const clearGraph = useStore((s) => s.clearGraph);
   const addToast = useStore((s) => s.addToast);
   const advancedMode = useStore((s) => s.advancedMode);
+  const nodeCount = useStore((s) => s.nodes.length);
 
   const [newSessionOpen, setNewSessionOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [presetsOpen, setPresetsOpen] = useState(false);
   const [credentialsOpen, setCredentialsOpen] = useState(false);
+  const [clearOpen, setClearOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -961,6 +963,18 @@ export function Toolbar() {
             {importing ? "Importing…" : "Import"}
           </Button>
 
+          {/* Clear canvas */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => setClearOpen(true)}
+            disabled={nodeCount === 0}
+            title="Clear canvas"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+
           {/* New session */}
           <Button
             variant="outline"
@@ -976,6 +990,34 @@ export function Toolbar() {
           <VectorStoreDot />
         </div>
       </header>
+
+      {/* Clear canvas confirmation */}
+      <Dialog open={clearOpen} onOpenChange={setClearOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Clear Canvas</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This will remove all {nodeCount} node{nodeCount !== 1 ? "s" : ""} and
+            their edges from the canvas. This action cannot be undone.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setClearOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => {
+                clearGraph();
+                setClearOpen(false);
+              }}
+            >
+              Clear All
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <NewSessionDialog
         open={newSessionOpen}
