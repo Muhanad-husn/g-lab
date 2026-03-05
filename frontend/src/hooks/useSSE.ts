@@ -8,7 +8,7 @@ import type {
 // ─── Handler types ────────────────────────────────────────────────────────────
 
 export interface SSEHandlers {
-  onTextChunk?: (data: { content: string }) => void;
+  onTextChunk?: (data: { text: string }) => void;
   onEvidence?: (data: { sources: EvidenceSource[] }) => void;
   onDocEvidence?: (data: { sources: EvidenceSource[] }) => void;
   onGraphDelta?: (data: GraphDelta) => void;
@@ -35,7 +35,7 @@ function dispatchEvent(
 
   switch (eventType) {
     case "text_chunk":
-      handlers.onTextChunk?.(parsed as { content: string });
+      handlers.onTextChunk?.(parsed as { text: string });
       break;
     case "evidence":
       handlers.onEvidence?.(parsed as { sources: EvidenceSource[] });

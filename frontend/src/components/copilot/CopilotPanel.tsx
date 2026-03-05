@@ -141,7 +141,7 @@ export function CopilotPanel() {
           model_assignments: useStore.getState().modelAssignments,
         },
         {
-          onTextChunk: ({ content }) => appendTextChunk(content),
+          onTextChunk: ({ text }) => appendTextChunk(text),
           onEvidence: ({ sources }) => setEvidence(sources),
           onDocEvidence: ({ sources }) => appendDocEvidence(sources),
           onGraphDelta: (delta) => setPendingDelta(delta),
