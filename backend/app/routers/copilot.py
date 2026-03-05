@@ -82,8 +82,12 @@ async def query(
     # Get optional Neo4j service (degraded mode — may be None)
     neo4j_svc: Any = getattr(request.app.state, "neo4j_service", None)
 
-    # Resolve preset config (use defaults for now — Phase 12 wires preset lookup)
+    # Resolve preset config, applying frontend model overrides if provided
     preset_config = PresetConfig()
+    if body.model_assignments:
+        preset_config = preset_config.model_copy(
+            update={"models": {**preset_config.models, **body.model_assignments}}
+        )
 
     # Get session factory for post-stream DB writes
     session_factory: async_sessionmaker[AsyncSession] = (

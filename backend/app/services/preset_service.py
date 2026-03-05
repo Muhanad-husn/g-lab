@@ -28,7 +28,7 @@ _SYSTEM_PRESETS: list[dict[str, object]] = [
             models={
                 "router": "anthropic/claude-3-haiku-20240307",
                 "graphRetrieval": "anthropic/claude-3-5-sonnet-20241022",
-                "synthesiser": "anthropic/claude-sonnet-4-20250514",
+                "synthesiser": "anthropic/claude-3.5-sonnet",
             },
             tokenBudgets={
                 "router": 256,
@@ -63,8 +63,8 @@ _SYSTEM_PRESETS: list[dict[str, object]] = [
             expansionLimit=50,
             models={
                 "router": "anthropic/claude-3-5-sonnet-20241022",
-                "graphRetrieval": "anthropic/claude-sonnet-4-20250514",
-                "synthesiser": "anthropic/claude-sonnet-4-20250514",
+                "graphRetrieval": "anthropic/claude-3.5-sonnet",
+                "synthesiser": "anthropic/claude-3.5-sonnet",
             },
             tokenBudgets={
                 "router": 512,

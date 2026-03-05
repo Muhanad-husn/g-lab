@@ -188,7 +188,7 @@ class PresetConfig(BaseModel):
         default_factory=lambda: {
             "router": "anthropic/claude-3-haiku-20240307",
             "graphRetrieval": "anthropic/claude-3-5-sonnet-20241022",
-            "synthesiser": "anthropic/claude-sonnet-4-20250514",
+            "synthesiser": "anthropic/claude-3.5-sonnet",
         }
     )
     tokenBudgets: dict[str, int] = Field(
@@ -227,6 +227,7 @@ class CopilotQueryRequest(BaseModel):
     query: str
     session_id: str
     include_graph_context: bool = True
+    model_assignments: dict[str, str] | None = None
 
 
 class CopilotMessage(BaseModel):

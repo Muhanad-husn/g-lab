@@ -421,7 +421,7 @@ function CopilotSettingsDialog({ open, onClose }: CopilotSettingsDialogProps) {
                 <Input
                   value={synthesiser}
                   onChange={(e) => setSynthesiser(e.target.value)}
-                  placeholder="anthropic/claude-sonnet-4-20250514"
+                  placeholder="anthropic/claude-3.5-sonnet"
                   className="h-7 text-xs font-mono"
                 />
               </label>
@@ -452,7 +452,7 @@ const DEFAULT_PRESET_CONFIG: PresetConfig = {
   models: {
     router: "anthropic/claude-3-haiku-20240307",
     graphRetrieval: "anthropic/claude-3-5-sonnet-20241022",
-    synthesiser: "anthropic/claude-sonnet-4-20250514",
+    synthesiser: "anthropic/claude-3.5-sonnet",
   },
   tokenBudgets: {
     router: 500,

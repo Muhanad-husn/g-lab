@@ -134,7 +134,12 @@ export function CopilotPanel() {
     try {
       await startSSE(
         `${API_BASE}/copilot/query`,
-        { query: text, session_id: sessionId!, include_graph_context: true },
+        {
+          query: text,
+          session_id: sessionId!,
+          include_graph_context: true,
+          model_assignments: useStore.getState().modelAssignments,
+        },
         {
           onTextChunk: ({ content }) => appendTextChunk(content),
           onEvidence: ({ sources }) => setEvidence(sources),
