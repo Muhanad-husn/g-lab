@@ -1,24 +1,29 @@
 # G-Lab
 
-**Graph investigation workbench for data journalists and OSINT investigators.**
+**The graph investigation workbench that puts the power back in your hands.**
 
-G-Lab is a self-hosted, local, session-based environment for exploring graph databases with optional AI assistance. The graph canvas is the core product — AI is a sidecar. All data stays on your machine; no telemetry, no proxied credentials.
+G-Lab is a self-hosted, privacy-first environment for exploring graph databases — built for the people who dig into data that matters. Connect your Neo4j instance, pull threads on the canvas, and let the AI Copilot surface what you'd miss. Upload your own documents and watch the system cross-reference graph evidence with your source material in real time.
+
+No cloud accounts. No telemetry. No credentials leaving your machine. Just you, your data, and a tool that stays out of the way until you need it.
 
 ---
 
 ## Who It's For
 
-- **Data journalists** tracing ownership chains, mapping influence networks, corroborating sources against documents.
-- **OSINT investigators** conducting deep network tracing and hypothesis testing.
+- **Data journalists** tracing ownership chains, mapping influence networks, and corroborating sources against leaked documents — on deadline.
+- **OSINT investigators** running deep network traces, testing hypotheses against live graph data, and building cases that hold up.
+- **Researchers and analysts** who need to see the connections hiding in complex datasets without sending their data to someone else's server.
 
 ---
 
-## Design Principles
+## What Makes G-Lab Different
 
-1. **User drives, AI assists** — every graph mutation is initiated or approved by the user.
-2. **Progressive disclosure** — productive in under 5 minutes with just the canvas; AI and advanced config reveal themselves as needed.
-3. **Reproducibility by default** — every session is exportable and every action is logged.
-4. **Privacy through architecture** — fully self-hosted; nothing leaves the host.
+- **Your graph, read-only** — G-Lab never writes to your Neo4j database. Ever. Explore fearlessly.
+- **AI that assists, never decides** — the Copilot proposes; you approve. Every graph mutation is user-initiated.
+- **Document-grounded answers** — upload PDFs and DOCX files, and the Copilot cites them alongside graph evidence. No hallucinated sources.
+- **Fully reproducible** — every action is logged, every session is exportable, every investigation can be picked up exactly where you left off.
+- **Up and running in minutes** — `docker compose up` and you're investigating. Progressive disclosure means you start with the canvas and unlock AI features as you need them.
+- **Privacy through architecture** — not privacy through policy. Self-hosted means self-hosted.
 
 ---
 
@@ -198,14 +203,15 @@ Session exports include a `vector_manifest.json` listing the library name and do
 
 ---
 
-## Roadmap
+## Built With
 
-| Phase | Description                                           | Status      |
-| ----- | ----------------------------------------------------- | ----------- |
-| 0     | Project bootstrap — tooling, logging, cache           | Complete    |
-| 1     | Core workbench — canvas, sessions, Neo4j proxy        | Complete    |
-| 2     | AI Copilot — LLM-assisted query and summarisation     | Complete    |
-| 3     | Document store — ChromaDB vector search, grounding    | Complete    |
+536 backend tests. 91 frontend tests. 17 stages across 3 phases. Every line intentional.
+
+| Phase | What shipped                                          |
+| ----- | ----------------------------------------------------- |
+| 1     | Core workbench — canvas, sessions, Neo4j read-only proxy, guardrails, import/export |
+| 2     | AI Copilot — streaming LLM pipeline, Cypher generation, confidence scoring, re-retrieval, presets |
+| 3     | Document library — PDF/DOCX ingestion, tiered parsing, vector search, cross-encoder reranking, document-grounded answers |
 
 ---
 
@@ -217,6 +223,12 @@ Session exports include a `vector_manifest.json` listing the library name and do
 | `docs/ARCHITECTURE.md`          | System design, data models, API surface           |
 | `docs/IMPLEMENTATION_PLAN.md`   | Granular build plan with per-run file lists       |
 | `docs/STRUCTURE_PH1.md`         | Phase 1 build order and stage breakdown           |
+
+---
+
+## Contributing
+
+G-Lab is open for contributions. If you work with graph data and have ideas for making investigations better, we'd love to hear from you.
 
 ---
 
