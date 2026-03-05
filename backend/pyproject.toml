@@ -61,6 +61,10 @@ disallow_incomplete_defs = true
 module = ["chromadb", "chromadb.*", "sentence_transformers", "sentence_transformers.*"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = ["PyPDF2", "PyPDF2.*", "docx", "docx.*", "unstructured", "unstructured.*", "docling", "docling.*"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
