@@ -145,6 +145,8 @@ function LabelRow({ name, count, isRelType = false }: LabelRowProps) {
   const [expanded, setExpanded] = useState(false);
   const [samples, setSamples] = useState<Record<string, unknown>[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const setNavigatorTab = useStore((s) => s.setNavigatorTab);
+  const setSearchQuery = useStore((s) => s.setSearchQuery);
 
   async function handleToggle() {
     const next = !expanded;
@@ -167,6 +169,11 @@ function LabelRow({ name, count, isRelType = false }: LabelRowProps) {
     <div>
       <button
         onClick={handleToggle}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          setSearchQuery(name);
+          setNavigatorTab("search");
+        }}
         className="flex w-full items-center gap-1.5 px-3 py-1.5 text-xs hover:bg-accent/50 rounded-sm transition-colors"
       >
         {expanded ? (

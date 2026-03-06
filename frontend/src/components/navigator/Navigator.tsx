@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Search, Filter, Bookmark, Database, Bot, FileText } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SearchPanel } from "./SearchPanel";
@@ -19,8 +18,6 @@ const TABS = [
   { id: "copilot", icon: Bot, label: "Copilot" },
   { id: "documents", icon: FileText, label: "Documents" },
 ] as const;
-
-type TabId = (typeof TABS)[number]["id"];
 
 // ─── Copilot history (read-only transcript) ───────────────────────────────────
 
@@ -54,7 +51,8 @@ function CopilotHistory() {
 // ─── Navigator ────────────────────────────────────────────────────────────────
 
 export function Navigator() {
-  const [activeTab, setActiveTab] = useState<TabId>("search");
+  const activeTab = useStore((s) => s.navigatorTab);
+  const setActiveTab = useStore((s) => s.setNavigatorTab);
 
   return (
     <div className="flex flex-row h-full">

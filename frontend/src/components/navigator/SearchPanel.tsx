@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -81,16 +81,16 @@ export function SearchPanel() {
   const [error, setError] = useState<string | null>(null);
 
   const addNodes = useStore((s) => s.addNodes);
+  const storeSearchQuery = useStore((s) => s.searchQuery);
+  const setSearchQuery = useStore((s) => s.setSearchQuery);
   const { expandNode } = useGraphActions();
 
-  async function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    if (!query.trim()) return;
-
+  async function doSearch(q: string) {
+    if (!q.trim()) return;
     setLoading(true);
     setError(null);
     try {
-      const data = await search({ query: query.trim(), limit: 25 });
+      const data = await search({ query: q.trim(), limit: 25 });
       setResults(data.nodes);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Search failed");
@@ -99,6 +99,22 @@ export function SearchPanel() {
       setLoading(false);
     }
   }
+
+  async function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    await doSearch(query);
+  }
+
+  // Watch for cross-component search query (e.g. from DatabaseOverview double-click)
+  const prevStoreQuery = useRef("");
+  useEffect(() => {
+    if (storeSearchQuery && storeSearchQuery !== prevStoreQuery.current) {
+      prevStoreQuery.current = storeSearchQuery;
+      setQuery(storeSearchQuery);
+      void doSearch(storeSearchQuery);
+      setSearchQuery("");
+    }
+  }, [storeSearchQuery, setSearchQuery]);
 
   function handleAdd(node: GraphNode) {
     addNodes([node]);

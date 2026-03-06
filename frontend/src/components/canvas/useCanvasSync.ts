@@ -3,6 +3,7 @@ import type cytoscape from "cytoscape";
 import type { GraphNode } from "@/lib/types";
 import { runLayout } from "@/lib/cytoscape";
 import { useStore } from "@/store";
+import { useGraphActions } from "@/hooks/useGraphActions";
 import { getLabelColor, getDisplayLabel } from "./cytoscapeStyles";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -37,6 +38,7 @@ export function useCanvasSync(cy: cytoscape.Core | null): void {
   const setPositions = useStore((s) => s.setPositions);
   const setSelectedIds = useStore((s) => s.setSelectedIds);
   const clearSelection = useStore((s) => s.clearSelection);
+  const { expandNode } = useGraphActions();
 
   // ─── Inbound sync: store → cy ──────────────────────────────────────────────
   useEffect(() => {
@@ -162,6 +164,20 @@ export function useCanvasSync(cy: cytoscape.Core | null): void {
       cy.off("tap", handleTap);
     };
   }, [cy, setSelectedIds, clearSelection]);
+
+  // ─── Double-click to expand: cy dbltap → expandNode ─────────────────────────
+  useEffect(() => {
+    if (!cy) return;
+    const handleDblTap = (evt: cytoscape.EventObject) => {
+      const el = evt.target as cytoscape.SingularElementArgument;
+      if (el.hasClass("collapsed-placeholder")) return;
+      void expandNode(el.id(), { hops: 1 });
+    };
+    cy.on("dbltap", "node", handleDblTap);
+    return () => {
+      cy.off("dbltap", "node", handleDblTap);
+    };
+  }, [cy, expandNode]);
 
   // ─── Per-node collapse: collapsedNodeIds → cy display:none ────────────────
   useEffect(() => {

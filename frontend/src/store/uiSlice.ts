@@ -13,12 +13,24 @@ export interface PanelStates {
   inspectorCollapsed: boolean;
 }
 
+export type NavigatorTabId =
+  | "search"
+  | "filters"
+  | "findings"
+  | "database"
+  | "copilot"
+  | "documents";
+
 export interface UiSlice {
   /** IDs of selected nodes/edges in Cytoscape. */
   selectedIds: string[];
   panelStates: PanelStates;
   /** Dismissible in-canvas banners (e.g., guardrail warnings). */
   banners: Banner[];
+  /** Active navigator tab. */
+  navigatorTab: NavigatorTabId;
+  /** Cross-component search query trigger (consumed by SearchPanel). */
+  searchQuery: string;
 
   setSelectedIds: (ids: string[]) => void;
   clearSelection: () => void;
@@ -26,6 +38,8 @@ export interface UiSlice {
   pushBanner: (banner: Omit<Banner, "id">) => string;
   dismissBanner: (id: string) => void;
   clearBanners: () => void;
+  setNavigatorTab: (tab: NavigatorTabId) => void;
+  setSearchQuery: (query: string) => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -42,6 +56,8 @@ export const createUiSlice: StateCreator<UiSlice, [], [], UiSlice> = (set) => ({
   selectedIds: [],
   panelStates: { navigatorCollapsed: false, inspectorCollapsed: false },
   banners: [],
+  navigatorTab: "search",
+  searchQuery: "",
 
   setSelectedIds: (ids) => set({ selectedIds: ids }),
 
@@ -64,4 +80,8 @@ export const createUiSlice: StateCreator<UiSlice, [], [], UiSlice> = (set) => ({
     })),
 
   clearBanners: () => set({ banners: [] }),
+
+  setNavigatorTab: (tab) => set({ navigatorTab: tab }),
+
+  setSearchQuery: (query) => set({ searchQuery: query }),
 });
