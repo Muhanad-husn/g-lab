@@ -35,8 +35,19 @@ function PropertyTable({ properties }: { properties: Record<string, unknown> }) 
 
 // ─── EdgeDetail ───────────────────────────────────────────────────────────────
 
+function getNodeLabel(nodes: { id: string; properties: Record<string, unknown> }[], nodeId: string): string {
+  const node = nodes.find((n) => n.id === nodeId);
+  if (!node) return nodeId;
+  const props = node.properties;
+  for (const key of ["name", "title", "_primary_value", "label"]) {
+    if (props[key] && typeof props[key] === "string") return props[key] as string;
+  }
+  return nodeId;
+}
+
 export function EdgeDetail({ id }: { id: string }) {
   const edge = useStore((s) => s.edges.find((e) => e.id === id));
+  const nodes = useStore((s) => s.nodes);
 
   if (!edge) {
     return (
@@ -45,6 +56,9 @@ export function EdgeDetail({ id }: { id: string }) {
       </p>
     );
   }
+
+  const sourceLabel = getNodeLabel(nodes, edge.source);
+  const targetLabel = getNodeLabel(nodes, edge.target);
 
   return (
     <div className="flex flex-col gap-3 py-2">
@@ -60,11 +74,11 @@ export function EdgeDetail({ id }: { id: string }) {
       <div className="px-3 text-xs text-muted-foreground space-y-1">
         <p>
           <span className="font-medium text-foreground">From:</span>{" "}
-          <span className="font-mono text-[10px]">{edge.source}</span>
+          <span className="text-foreground">{sourceLabel}</span>
         </p>
         <p>
           <span className="font-medium text-foreground">To:</span>{" "}
-          <span className="font-mono text-[10px]">{edge.target}</span>
+          <span className="text-foreground">{targetLabel}</span>
         </p>
       </div>
 

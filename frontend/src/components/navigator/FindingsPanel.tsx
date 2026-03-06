@@ -18,14 +18,24 @@ import type { FindingResponse } from "@/lib/types";
 // ─── Finding card ─────────────────────────────────────────────────────────────
 
 function FindingCard({ finding }: { finding: FindingResponse }) {
-  const date = new Date(finding.created_at).toLocaleDateString();
+  const date = new Date(finding.created_at).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+
+  // If body starts with the same text as title, show only the remainder
+  const bodyText = finding.body
+    ? finding.body.startsWith(finding.title.replace(/…$/, ""))
+      ? finding.body.slice(finding.title.replace(/…$/, "").length).trimStart()
+      : finding.body
+    : null;
 
   return (
-    <div className="px-3 py-2 border-b border-border last:border-0">
+    <div className="px-3 py-2.5 border-b border-border last:border-0 hover:bg-accent/30 transition-colors">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
-          <FileText className="h-3 w-3 shrink-0 text-muted-foreground" />
-          <span className="text-xs font-medium text-foreground truncate">
+          <FileText className="h-3 w-3 shrink-0 text-primary/60" />
+          <span className="text-xs font-semibold text-foreground truncate">
             {finding.title}
           </span>
           {finding.has_snapshot && (
@@ -37,9 +47,9 @@ function FindingCard({ finding }: { finding: FindingResponse }) {
         </div>
         <span className="text-[10px] text-muted-foreground shrink-0">{date}</span>
       </div>
-      {finding.body && (
-        <p className="mt-1 text-[11px] text-muted-foreground line-clamp-2 pl-4">
-          {finding.body}
+      {bodyText && (
+        <p className="mt-1 text-[11px] text-muted-foreground/70 line-clamp-2 pl-[18px] leading-relaxed">
+          {bodyText}
         </p>
       )}
     </div>
