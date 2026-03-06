@@ -253,7 +253,7 @@ export function CopilotPanel() {
   }
 
   return (
-    <div className="flex flex-col h-full border-t border-border bg-card">
+    <div className="flex flex-col h-full bg-card">
       {/* Header */}
       <div className="h-8 flex items-center px-3 border-b border-border shrink-0">
         <span className="text-xs font-semibold text-foreground">Copilot</span>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -147,6 +147,7 @@ function LabelRow({ name, count, isRelType = false }: LabelRowProps) {
   const [loading, setLoading] = useState(false);
   const setNavigatorTab = useStore((s) => s.setNavigatorTab);
   const setSearchQuery = useStore((s) => s.setSearchQuery);
+  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function handleToggle() {
     const next = !expanded;
@@ -165,15 +166,26 @@ function LabelRow({ name, count, isRelType = false }: LabelRowProps) {
     }
   }
 
+  function handleClick() {
+    if (clickTimer.current) {
+      // Second click arrived — it's a double-click
+      clearTimeout(clickTimer.current);
+      clickTimer.current = null;
+      setSearchQuery(name);
+      setNavigatorTab("search");
+    } else {
+      // First click — wait to see if double-click follows
+      clickTimer.current = setTimeout(() => {
+        clickTimer.current = null;
+        void handleToggle();
+      }, 250);
+    }
+  }
+
   return (
     <div>
       <button
-        onClick={handleToggle}
-        onDoubleClick={(e) => {
-          e.stopPropagation();
-          setSearchQuery(name);
-          setNavigatorTab("search");
-        }}
+        onClick={handleClick}
         className="flex w-full items-center gap-1.5 px-3 py-1.5 text-xs hover:bg-accent/50 rounded-sm transition-colors"
       >
         {expanded ? (

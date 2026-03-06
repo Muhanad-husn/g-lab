@@ -6,7 +6,6 @@ import { Inspector } from "@/components/inspector/Inspector";
 import { CytoscapeCanvas } from "@/components/canvas/CytoscapeCanvas";
 import { CanvasBanners } from "@/components/canvas/CanvasBanners";
 import { CanvasControls } from "@/components/canvas/CanvasControls";
-import { CopilotPanel } from "@/components/copilot/CopilotPanel";
 import { ToastContainer } from "@/components/ui/ToastContainer";
 import { DevPanel } from "@/components/dev/DevPanel";
 import { useSessionRestore } from "@/hooks/useSessionRestore";
@@ -60,7 +59,6 @@ export default function App() {
           </div>
         }
         inspector={<Inspector />}
-        bottomPanel={<CopilotPanel />}
       />
       <ToastContainer />
       {import.meta.env.DEV && <DevPanel />}

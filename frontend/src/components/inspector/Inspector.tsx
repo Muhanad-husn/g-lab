@@ -1,3 +1,4 @@
+import { PanelRightClose } from "lucide-react";
 import { useStore } from "@/store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -12,6 +13,7 @@ export function Inspector() {
   const nodes = useStore((s) => s.nodes);
   const edges = useStore((s) => s.edges);
   const evidence = useStore((s) => s.evidence);
+  const setPanelState = useStore((s) => s.setPanelState);
 
   const selectedId = selectedIds[0] ?? null;
 
@@ -46,6 +48,13 @@ export function Inspector() {
             {selectedId}
           </span>
         )}
+        <button
+          onClick={() => setPanelState("inspectorCollapsed", true)}
+          title="Collapse inspector"
+          className="ml-auto p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+        >
+          <PanelRightClose className="h-4 w-4" />
+        </button>
       </div>
 
       {/* Content — tabbed when evidence is available */}

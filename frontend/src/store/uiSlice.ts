@@ -56,7 +56,7 @@ export const createUiSlice: StateCreator<UiSlice, [], [], UiSlice> = (set) => ({
   selectedIds: [],
   panelStates: { navigatorCollapsed: false, inspectorCollapsed: false },
   banners: [],
-  navigatorTab: "search",
+  navigatorTab: "database",
   searchQuery: "",
 
   setSelectedIds: (ids) => set({ selectedIds: ids }),

@@ -1,20 +1,20 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import {
+  type ImperativePanelHandle,
   Panel,
   PanelGroup,
   PanelResizeHandle,
 } from "react-resizable-panels";
+import { PanelLeftOpen, PanelRightOpen } from "lucide-react";
 import { useStore } from "@/store";
 
 interface MainLayoutProps {
   navigator: React.ReactNode;
   canvas: React.ReactNode;
   inspector: React.ReactNode;
-  /** Optional bottom panel (Copilot). When provided, main content shrinks vertically. */
-  bottomPanel?: React.ReactNode;
 }
 
-// ─── Resize handles ───────────────────────────────────────────────────────────
+// ─── Resize handle ────────────────────────────────────────────────────────────
 
 function HResizeHandle() {
   return (
@@ -22,21 +22,53 @@ function HResizeHandle() {
   );
 }
 
-function VResizeHandle() {
+// ─── Collapsed strip ─────────────────────────────────────────────────────────
+
+function CollapsedStrip({
+  side,
+  onExpand,
+}: {
+  side: "left" | "right";
+  onExpand: () => void;
+}) {
+  const Icon = side === "left" ? PanelLeftOpen : PanelRightOpen;
   return (
-    <PanelResizeHandle className="h-1 bg-border hover:bg-primary/40 transition-colors" />
+    <div className="flex flex-col items-center w-8 shrink-0 bg-card border-border py-2">
+      <button
+        onClick={onExpand}
+        title={side === "left" ? "Expand navigator" : "Expand inspector"}
+        className="p-1.5 rounded hover:bg-accent/50 text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <Icon className="h-4 w-4" />
+      </button>
+    </div>
   );
 }
 
 // ─── Main layout ──────────────────────────────────────────────────────────────
 
-export function MainLayout({ navigator, canvas, inspector, bottomPanel }: MainLayoutProps) {
+export function MainLayout({ navigator, canvas, inspector }: MainLayoutProps) {
   const setPanelState = useStore((s) => s.setPanelState);
+  const navCollapsed = useStore((s) => s.panelStates.navigatorCollapsed);
+  const inspCollapsed = useStore((s) => s.panelStates.inspectorCollapsed);
 
-  const mainRow = (
+  const navRef = useRef<ImperativePanelHandle>(null);
+  const inspRef = useRef<ImperativePanelHandle>(null);
+
+  // Sync store → imperative panel API (for button-triggered collapse)
+  useEffect(() => {
+    if (navCollapsed) navRef.current?.collapse();
+  }, [navCollapsed]);
+
+  useEffect(() => {
+    if (inspCollapsed) inspRef.current?.collapse();
+  }, [inspCollapsed]);
+
+  return (
     <PanelGroup direction="horizontal" className="flex-1 overflow-hidden">
       {/* Navigator — 20% default, min 15% */}
       <Panel
+        ref={navRef}
         defaultSize={20}
         minSize={15}
         maxSize={35}
@@ -48,6 +80,13 @@ export function MainLayout({ navigator, canvas, inspector, bottomPanel }: MainLa
         {navigator}
       </Panel>
 
+      {navCollapsed && (
+        <CollapsedStrip
+          side="left"
+          onExpand={() => navRef.current?.expand()}
+        />
+      )}
+
       <HResizeHandle />
 
       {/* Canvas — fills remaining space */}
@@ -55,8 +94,16 @@ export function MainLayout({ navigator, canvas, inspector, bottomPanel }: MainLa
 
       <HResizeHandle />
 
+      {inspCollapsed && (
+        <CollapsedStrip
+          side="right"
+          onExpand={() => inspRef.current?.expand()}
+        />
+      )}
+
       {/* Inspector — 20% default, collapsible */}
       <Panel
+        ref={inspRef}
         defaultSize={20}
         minSize={15}
         maxSize={35}
@@ -66,32 +113,6 @@ export function MainLayout({ navigator, canvas, inspector, bottomPanel }: MainLa
         className="flex flex-col bg-card"
       >
         {inspector}
-      </Panel>
-    </PanelGroup>
-  );
-
-  if (!bottomPanel) {
-    return mainRow;
-  }
-
-  return (
-    <PanelGroup direction="vertical" className="flex-1 overflow-hidden">
-      {/* Main content row */}
-      <Panel defaultSize={72} minSize={40} className="flex overflow-hidden">
-        {mainRow}
-      </Panel>
-
-      <VResizeHandle />
-
-      {/* Bottom panel — Copilot, collapsible */}
-      <Panel
-        defaultSize={28}
-        minSize={10}
-        maxSize={50}
-        collapsible
-        className="flex flex-col bg-card overflow-hidden"
-      >
-        {bottomPanel}
       </Panel>
     </PanelGroup>
   );
