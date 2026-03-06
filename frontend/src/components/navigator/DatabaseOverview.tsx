@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon, Search } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { getSchema, getSamples, getRelSamples } from "@/api/graph";
@@ -195,6 +195,26 @@ function LabelRow({ name, count, isRelType = false }: LabelRowProps) {
         )}
         <span className="flex-1 text-left text-foreground font-mono">{name}</span>
         <CountBadge count={count} />
+        <span
+          role="button"
+          tabIndex={0}
+          title={`Search for ${name}`}
+          className="p-0.5 rounded hover:bg-primary/20 text-muted-foreground hover:text-primary"
+          onClick={(e) => {
+            e.stopPropagation();
+            setSearchQuery(name);
+            setNavigatorTab("search");
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.stopPropagation();
+              setSearchQuery(name);
+              setNavigatorTab("search");
+            }
+          }}
+        >
+          <Search className="h-3 w-3" />
+        </span>
       </button>
       {expanded && (
         <div className="ml-3 border-l border-border">
@@ -212,28 +232,47 @@ function LabelRow({ name, count, isRelType = false }: LabelRowProps) {
 // ─── Database overview ────────────────────────────────────────────────────────
 
 function CentralNodesSection({ nodes }: { nodes: CentralNode[] }) {
+  const setNavigatorTab = useStore((s) => s.setNavigatorTab);
+  const setSearchQuery = useStore((s) => s.setSearchQuery);
+
   if (nodes.length === 0) return null;
+
+  function handleSearch(displayName: string) {
+    setSearchQuery(displayName);
+    setNavigatorTab("search");
+  }
+
   return (
     <>
       <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         Central Nodes (by degree)
       </p>
-      {nodes.map((n) => (
-        <div
-          key={n.id}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs"
-        >
-          <span className="flex-1 text-foreground font-mono truncate">
-            {getDisplayLabel(n.properties, n.labels)}
-          </span>
-          <span className="text-[10px] text-muted-foreground shrink-0">
-            {n.labels.join(", ")}
-          </span>
-          <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
-            {n.degree}
-          </span>
-        </div>
-      ))}
+      {nodes.map((n) => {
+        const displayName = getDisplayLabel(n.properties, n.labels);
+        return (
+          <div
+            key={n.id}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs"
+          >
+            <span className="flex-1 text-foreground font-mono truncate">
+              {displayName}
+            </span>
+            <span className="text-[10px] text-muted-foreground shrink-0">
+              {n.labels.join(", ")}
+            </span>
+            <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
+              {n.degree}
+            </span>
+            <button
+              title={`Search for ${displayName}`}
+              className="p-0.5 rounded hover:bg-primary/20 text-muted-foreground hover:text-primary"
+              onClick={() => handleSearch(displayName)}
+            >
+              <Search className="h-3 w-3" />
+            </button>
+          </div>
+        );
+      })}
       <Separator className="my-2" />
     </>
   );

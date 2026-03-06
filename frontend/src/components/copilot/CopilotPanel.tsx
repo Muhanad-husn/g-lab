@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Bookmark } from "lucide-react";
 import { useStore } from "@/store";
 import { useSSE } from "@/hooks/useSSE";
 import { useReadOnlyMode } from "@/hooks/useReadOnlyMode";
 import { ConfidenceBadge } from "./ConfidenceBadge";
 import { API_BASE } from "@/lib/constants";
+import { createFinding } from "@/api/findings";
 import type { CopilotMessage } from "@/lib/types";
 
 // ─── Pipeline status indicator ─────────────────────────────────────────────────
@@ -94,8 +96,31 @@ interface MessageBubbleProps {
 function MessageBubble({ message }: MessageBubbleProps) {
   const confidence = useStore((s) => s.confidence);
   const evidence = useStore((s) => s.evidence);
+  const sessionId = useStore((s) => s.session?.id ?? null);
+  const addFinding = useStore((s) => s.addFinding);
   const isAssistant = message.role === "assistant";
   const hasDocEvidence = evidence.some((e) => e.type === "doc_chunk");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  async function handleSaveToFindings() {
+    if (!sessionId || saving) return;
+    setSaving(true);
+    try {
+      const title =
+        message.content.slice(0, 80).split("\n")[0] + (message.content.length > 80 ? "…" : "");
+      const finding = await createFinding(sessionId, {
+        title,
+        body: message.content,
+      });
+      addFinding(finding);
+      setSaved(true);
+    } catch {
+      // Silently fail — user can retry
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className={`flex flex-col gap-0.5 px-3 py-2 ${isAssistant ? "" : "items-end"}`}>
@@ -111,10 +136,26 @@ function MessageBubble({ message }: MessageBubbleProps) {
       >
         {message.content}
       </div>
-      {/* Show confidence badge on the last assistant message only */}
-      {isAssistant && confidence && (
-        <div className="self-start mt-0.5">
-          <ConfidenceBadge confidence={confidence} hasDocEvidence={hasDocEvidence} />
+      {/* Actions row for assistant messages */}
+      {isAssistant && (
+        <div className="flex items-center gap-1.5 self-start mt-0.5">
+          {confidence && (
+            <ConfidenceBadge confidence={confidence} hasDocEvidence={hasDocEvidence} />
+          )}
+          {sessionId && (
+            <button
+              title={saved ? "Saved to findings" : "Save to findings"}
+              className={`p-0.5 rounded transition-colors ${
+                saved
+                  ? "text-primary cursor-default"
+                  : "text-muted-foreground hover:text-primary hover:bg-primary/10"
+              }`}
+              onClick={() => void handleSaveToFindings()}
+              disabled={saving || saved}
+            >
+              <Bookmark className={`h-3.5 w-3.5 ${saved ? "fill-primary" : ""}`} />
+            </button>
+          )}
         </div>
       )}
     </div>
