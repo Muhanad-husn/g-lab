@@ -106,7 +106,7 @@ async def test_pipeline_with_doc_retrieval(
         ),
         patch(
             "app.services.copilot.pipeline.GraphRetrievalService.retrieve",
-            new=AsyncMock(return_value=([{"node": "A"}], [])),
+            new=AsyncMock(return_value=([{"node": "A"}], [], "")),
         ),
         patch(
             "app.services.copilot.pipeline.DocumentRetrievalRole.retrieve",
@@ -187,7 +187,7 @@ async def test_pipeline_reretrieval_increases_doc_top_k(
         ),
         patch(
             "app.services.copilot.pipeline.GraphRetrievalService.retrieve",
-            new=AsyncMock(return_value=([], [])),
+            new=AsyncMock(return_value=([], [], "")),
         ),
         patch(
             "app.services.copilot.pipeline.DocumentRetrievalRole.retrieve",
@@ -209,7 +209,7 @@ async def test_pipeline_reretrieval_increases_doc_top_k(
         ),
         patch(
             "app.services.copilot.pipeline.GraphRetrievalService.retrieve",
-            new=AsyncMock(return_value=([], [])),
+            new=AsyncMock(return_value=([], [], "")),
         ),
         patch(
             "app.services.copilot.pipeline.DocumentRetrievalRole.retrieve",
@@ -270,7 +270,7 @@ async def test_pipeline_no_doc_services(
         ),
         patch(
             "app.services.copilot.pipeline.GraphRetrievalService.retrieve",
-            new=AsyncMock(return_value=([], [])),
+            new=AsyncMock(return_value=([], [], "")),
         ),
         patch(
             "app.services.copilot.pipeline.SynthesiserService.synthesise",

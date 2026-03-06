@@ -15,7 +15,10 @@ export interface CopilotSlice {
   confidence: ConfidenceScore | null;
   evidence: EvidenceSource[];
   pipelineStatus: string | null;
-  toolUsed: { cypher: string } | null;
+  toolUsed:
+    | { cypher: string }
+    | { tool: string; params: Record<string, unknown> }
+    | null;
 
   startStream: () => void;
   appendTextChunk: (content: string) => void;
@@ -23,7 +26,9 @@ export interface CopilotSlice {
   appendDocEvidence: (sources: EvidenceSource[]) => void;
   setConfidence: (score: ConfidenceScore) => void;
   setStatus: (stage: string) => void;
-  setToolUsed: (tool: { cypher: string }) => void;
+  setToolUsed: (
+    tool: { cypher: string } | { tool: string; params: Record<string, unknown> },
+  ) => void;
   /** Finalise stream: flush streamingContent as an assistant message. */
   finishStream: (sessionId: string) => void;
   addMessage: (message: CopilotMessage) => void;

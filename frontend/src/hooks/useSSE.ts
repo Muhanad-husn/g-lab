@@ -14,7 +14,9 @@ export interface SSEHandlers {
   onGraphDelta?: (data: GraphDelta) => void;
   onConfidence?: (data: ConfidenceScore) => void;
   onStatus?: (data: { stage: string }) => void;
-  onToolUsed?: (data: { cypher: string }) => void;
+  onToolUsed?: (
+    data: { cypher: string } | { tool: string; params: Record<string, unknown> },
+  ) => void;
   onDone?: () => void;
   onError?: (data: { code: string; message: string }) => void;
 }
@@ -54,7 +56,11 @@ function dispatchEvent(
       handlers.onStatus?.(parsed as { stage: string });
       break;
     case "tool_used":
-      handlers.onToolUsed?.(parsed as { cypher: string });
+      handlers.onToolUsed?.(
+        parsed as
+          | { cypher: string }
+          | { tool: string; params: Record<string, unknown> },
+      );
       break;
     case "done":
       handlers.onDone?.();

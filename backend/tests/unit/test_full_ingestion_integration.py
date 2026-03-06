@@ -351,7 +351,7 @@ async def test_full_pipeline_with_doc_context() -> None:
         ),
         patch(
             "app.services.copilot.pipeline.GraphRetrievalService.retrieve",
-            new=AsyncMock(return_value=([], [])),
+            new=AsyncMock(return_value=([], [], "")),
         ),
         patch(
             "app.services.copilot.pipeline.DocumentRetrievalRole.retrieve",

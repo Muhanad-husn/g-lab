@@ -91,7 +91,7 @@ async def test_full_flow_happy_path():
         ),
         patch(
             "app.services.copilot.pipeline.GraphRetrievalService.retrieve",
-            new=AsyncMock(return_value=([], [])),
+            new=AsyncMock(return_value=([], [], "")),
         ),
         patch(
             "app.services.copilot.pipeline.SynthesiserService.synthesise",
@@ -157,7 +157,7 @@ async def test_re_retrieval_on_low_confidence():
         ),
         patch(
             "app.services.copilot.pipeline.GraphRetrievalService.retrieve",
-            new=AsyncMock(return_value=([], [])),
+            new=AsyncMock(return_value=([], [], "")),
         ),
         patch(
             "app.services.copilot.pipeline.SynthesiserService.synthesise",
@@ -269,7 +269,7 @@ async def test_semaphore_released_after_success():
         ),
         patch(
             "app.services.copilot.pipeline.GraphRetrievalService.retrieve",
-            new=AsyncMock(return_value=([], [])),
+            new=AsyncMock(return_value=([], [], "")),
         ),
         patch(
             "app.services.copilot.pipeline.SynthesiserService.synthesise",

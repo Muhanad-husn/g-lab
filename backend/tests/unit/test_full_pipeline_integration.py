@@ -123,7 +123,7 @@ async def test_integration_happy_path_emits_correct_event_sequence() -> None:
         ),
         patch(
             "app.services.copilot.pipeline.GraphRetrievalService.retrieve",
-            new=AsyncMock(return_value=([], [])),
+            new=AsyncMock(return_value=([], [], "")),
         ),
         patch(
             "app.services.copilot.pipeline.SynthesiserService.synthesise",
@@ -184,7 +184,7 @@ async def test_integration_re_retrieval_on_low_confidence() -> None:
         ),
         patch(
             "app.services.copilot.pipeline.GraphRetrievalService.retrieve",
-            new=AsyncMock(return_value=([], [])),
+            new=AsyncMock(return_value=([], [], "")),
         ),
         patch(
             "app.services.copilot.pipeline.SynthesiserService.synthesise",
@@ -239,7 +239,7 @@ async def test_integration_conversation_stored_after_pipeline(
         ),
         patch(
             "app.services.copilot.pipeline.GraphRetrievalService.retrieve",
-            new=AsyncMock(return_value=([], [])),
+            new=AsyncMock(return_value=([], [], "")),
         ),
         patch(
             "app.services.copilot.pipeline.SynthesiserService.synthesise",
@@ -341,7 +341,7 @@ async def test_integration_action_logger_fires_after_pipeline(
         ),
         patch(
             "app.services.copilot.pipeline.GraphRetrievalService.retrieve",
-            new=AsyncMock(return_value=([], [])),
+            new=AsyncMock(return_value=([], [], "")),
         ),
         patch(
             "app.services.copilot.pipeline.SynthesiserService.synthesise",

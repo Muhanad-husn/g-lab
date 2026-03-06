@@ -52,6 +52,39 @@ function CypherBadge({ cypher }: { cypher: string }) {
   );
 }
 
+// ─── Tool badge (structured tool selection) ─────────────────────────────────────
+
+function ToolBadge({
+  tool,
+  params,
+}: {
+  tool: string;
+  params: Record<string, unknown>;
+}) {
+  const [open, setOpen] = useState(false);
+  const toggle = useCallback(() => setOpen((v) => !v), []);
+
+  return (
+    <div className="px-3 py-1 border-b border-border bg-muted/20">
+      <button
+        className="flex items-center gap-1.5 text-[10px] text-muted-foreground hover:text-foreground"
+        onClick={toggle}
+      >
+        <span className="font-mono">{">"}</span>
+        <span>
+          Tool: <span className="font-semibold">{tool}</span>
+        </span>
+        <span className="ml-1">{open ? "▾" : "▸"}</span>
+      </button>
+      {open && (
+        <pre className="mt-1 p-1.5 rounded bg-muted text-[10px] font-mono text-foreground overflow-x-auto whitespace-pre-wrap break-all">
+          {JSON.stringify(params, null, 2)}
+        </pre>
+      )}
+    </div>
+  );
+}
+
 // ─── Message bubble ────────────────────────────────────────────────────────────
 
 interface MessageBubbleProps {
@@ -250,7 +283,12 @@ export function CopilotPanel() {
 
       {/* Pipeline status */}
       <StatusDot status={pipelineStatus} />
-      {toolUsed?.cypher && <CypherBadge cypher={toolUsed.cypher} />}
+      {toolUsed &&
+        ("cypher" in toolUsed ? (
+          <CypherBadge cypher={toolUsed.cypher} />
+        ) : (
+          <ToolBadge tool={toolUsed.tool} params={toolUsed.params} />
+        ))}
 
       {/* Message list */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto">

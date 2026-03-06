@@ -11,6 +11,7 @@ handles:
 from __future__ import annotations
 
 import asyncio
+import json
 from collections.abc import AsyncGenerator
 from typing import Any
 
@@ -222,9 +223,10 @@ class CopilotPipeline:
             else _empty_doc_result()
         )
 
-        (rows, _graph_evidence, cypher_used), (doc_chunks, doc_evidence) = (
-            await asyncio.gather(graph_coro, doc_coro)
-        )
+        (
+            (rows, _graph_evidence, cypher_used),
+            (doc_chunks, doc_evidence),
+        ) = await asyncio.gather(graph_coro, doc_coro)
         logger.debug(
             "copilot_retrieved",
             row_count=len(rows),
@@ -232,10 +234,14 @@ class CopilotPipeline:
         )
 
         if cypher_used:
-            yield SSEEvent(
-                event="tool_used",
-                data={"cypher": cypher_used},
-            )
+            try:
+                tool_info = json.loads(cypher_used)
+                yield SSEEvent(event="tool_used", data=tool_info)
+            except (json.JSONDecodeError, ValueError):
+                yield SSEEvent(
+                    event="tool_used",
+                    data={"cypher": cypher_used},
+                )
 
         if doc_evidence:
             yield SSEEvent(

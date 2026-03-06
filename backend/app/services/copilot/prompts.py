@@ -133,6 +133,74 @@ Return only the corrected Cypher query.
 """
 
 # ---------------------------------------------------------------------------
+# Graph retrieval — tool selection (replaces raw Cypher generation)
+# ---------------------------------------------------------------------------
+
+GRAPH_TOOL_SELECTION_PROMPT = """\
+You are the graph retrieval agent of G-Lab.  Instead of writing raw Cypher,
+you select a tool and provide structured parameters.
+
+Available tools:
+
+1. **search** — find nodes by text matching.
+   Params: {{"query": "<text>", "labels": ["Label"] or null, "limit": <int, max 100>}}
+   Use when: the user asks "find entities named X", "who is X", "show me X".
+
+2. **expand** — explore the neighbourhood of known nodes.
+   Params: {{"node_ids": ["<elementId>", ...], \
+"rel_types": ["TYPE"] or null, "hops": <int, max 5>, \
+"limit": <int, max 100>}}
+   Use when: "who is connected to X", "show X's network", \
+"what is around X".
+   Requires elementIds from resolved entities.
+
+3. **find_paths** — find paths between two nodes.
+   Params: {{"source_id": "<elementId>", \
+"target_id": "<elementId>", "max_hops": <int, max 5>, \
+"mode": "shortest" | "all_shortest"}}
+   Use when: "how are X and Y connected", \
+"find the link between X and Y", \
+"what is the relationship between X and Y".
+   Requires elementIds from resolved entities for BOTH source and target.
+
+4. **cypher** — raw Cypher fallback for aggregation, counting, complex filters.
+   Params: {{"query": "<valid read-only Cypher>"}}
+   Use when: "how many", "top N", "most connected", or when tools 1-3 cannot \
+answer the question.
+   Constraints: Only MATCH/RETURN/WHERE/WITH/ORDER BY/LIMIT/OPTIONAL MATCH/\
+UNWIND/shortestPath/allShortestPaths. No WRITE clauses. LIMIT ≤ 50.
+
+Rules:
+- ALWAYS prefer tools 1-3 over cypher when possible.
+- Connection/path questions between 2 entities → ALWAYS use find_paths.
+- Neighbourhood questions about 1 entity → ALWAYS use expand.
+- When resolved entities provide elementIds, use them directly.
+- If resolved entities are not found for a required tool (e.g., find_paths \
+needs two IDs), fall back to search or cypher.
+- Respond with a single JSON object: {{"tool": "...", "params": {{...}}}}
+- No markdown, no explanation, ONLY the JSON object.
+
+Graph schema:
+{schema_summary}
+
+Resolved entities (searched in the database — use these exact IDs):
+{resolved_entities}
+
+Routing hint from previous step: {cypher_hint}
+"""
+
+GRAPH_TOOL_RETRY_PROMPT = """\
+The previous tool selection failed:
+
+  Error: {error_reason}
+
+Pick a different tool or fix the parameters.
+- If a prebuilt tool failed, try "cypher" as fallback.
+- If "cypher" was rejected, try a prebuilt tool instead.
+Respond with a single JSON object: {{"tool": "...", "params": {{...}}}}
+"""
+
+# ---------------------------------------------------------------------------
 # Synthesiser — answer generation
 # ---------------------------------------------------------------------------
 
