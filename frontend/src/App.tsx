@@ -5,6 +5,7 @@ import { Navigator } from "@/components/navigator/Navigator";
 import { Inspector } from "@/components/inspector/Inspector";
 import { CytoscapeCanvas } from "@/components/canvas/CytoscapeCanvas";
 import { CanvasBanners } from "@/components/canvas/CanvasBanners";
+import { CanvasControls } from "@/components/canvas/CanvasControls";
 import { CopilotPanel } from "@/components/copilot/CopilotPanel";
 import { ToastContainer } from "@/components/ui/ToastContainer";
 import { DevPanel } from "@/components/dev/DevPanel";
@@ -55,6 +56,7 @@ export default function App() {
           <div className="relative h-full w-full">
             <CytoscapeCanvas />
             <CanvasBanners />
+            <CanvasControls />
           </div>
         }
         inspector={<Inspector />}
