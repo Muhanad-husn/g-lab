@@ -222,14 +222,20 @@ class CopilotPipeline:
             else _empty_doc_result()
         )
 
-        (rows, _graph_evidence), (doc_chunks, doc_evidence) = await asyncio.gather(
-            graph_coro, doc_coro
+        (rows, _graph_evidence, cypher_used), (doc_chunks, doc_evidence) = (
+            await asyncio.gather(graph_coro, doc_coro)
         )
         logger.debug(
             "copilot_retrieved",
             row_count=len(rows),
             doc_chunk_count=len(doc_chunks),
         )
+
+        if cypher_used:
+            yield SSEEvent(
+                event="tool_used",
+                data={"cypher": cypher_used},
+            )
 
         if doc_evidence:
             yield SSEEvent(
@@ -288,7 +294,7 @@ class CopilotPipeline:
                 if doc_role is not None
                 else _empty_doc_result()
             )
-            (re_rows, _), (re_doc_chunks, _) = await asyncio.gather(
+            (re_rows, _, _re_cypher), (re_doc_chunks, _) = await asyncio.gather(
                 re_graph_coro, re_doc_coro
             )
             combined_rows = (rows + re_rows)[:50]

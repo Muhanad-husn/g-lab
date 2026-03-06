@@ -47,8 +47,8 @@ class GraphRetrievalService:
         temperature: float = 0.0,
         max_tokens: int = 512,
         query: str = "",
-    ) -> tuple[list[dict[str, Any]], list[EvidenceSource]]:
-        """Generate a Cypher query and return raw rows + evidence sources.
+    ) -> tuple[list[dict[str, Any]], list[EvidenceSource], str]:
+        """Generate a Cypher query and return raw rows + evidence sources + cypher.
 
         Flow:
         1. Extract entity names from the user query (LLM call).
@@ -57,11 +57,11 @@ class GraphRetrievalService:
         4. Sanitise (retry once on rejection).
         5. Execute and map results to evidence.
 
-        Returns ``([], [])`` on skip, double rejection, or timeout.
+        Returns ``([], [], "")`` on skip, double rejection, or timeout.
         """
         if not intent.needs_graph:
             logger.debug("graph_retrieval_skipped", reason="needs_graph=False")
-            return [], []
+            return [], [], ""
 
         # --- Step 1: resolve entities from the query ---
         resolved = await self._resolve_entities(
@@ -81,7 +81,7 @@ class GraphRetrievalService:
             resolved_entities=resolved,
         )
         if not cypher:
-            return [], []
+            return [], [], ""
 
         # --- Step 3: sanitise (retry once on rejection) ---
         clean_cypher = await self._sanitise_with_retry(
@@ -95,7 +95,7 @@ class GraphRetrievalService:
             resolved_entities=resolved,
         )
         if not clean_cypher:
-            return [], []
+            return [], [], ""
 
         # --- Step 4: execute ---
         rows = await self._execute(clean_cypher, neo4j_service)
@@ -107,8 +107,9 @@ class GraphRetrievalService:
             "graph_retrieval_complete",
             row_count=len(rows),
             evidence_count=len(evidence),
+            cypher=clean_cypher,
         )
-        return rows, evidence
+        return rows, evidence, clean_cypher
 
     # ------------------------------------------------------------------
     # Entity resolution

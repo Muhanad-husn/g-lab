@@ -15,6 +15,7 @@ export interface CopilotSlice {
   confidence: ConfidenceScore | null;
   evidence: EvidenceSource[];
   pipelineStatus: string | null;
+  toolUsed: { cypher: string } | null;
 
   startStream: () => void;
   appendTextChunk: (content: string) => void;
@@ -22,6 +23,7 @@ export interface CopilotSlice {
   appendDocEvidence: (sources: EvidenceSource[]) => void;
   setConfidence: (score: ConfidenceScore) => void;
   setStatus: (stage: string) => void;
+  setToolUsed: (tool: { cypher: string }) => void;
   /** Finalise stream: flush streamingContent as an assistant message. */
   finishStream: (sessionId: string) => void;
   addMessage: (message: CopilotMessage) => void;
@@ -42,6 +44,7 @@ export const createCopilotSlice: StateCreator<
   confidence: null,
   evidence: [],
   pipelineStatus: null,
+  toolUsed: null,
 
   startStream: () =>
     set({
@@ -50,6 +53,7 @@ export const createCopilotSlice: StateCreator<
       confidence: null,
       evidence: [],
       pipelineStatus: "starting",
+      toolUsed: null,
     }),
 
   appendTextChunk: (content) =>
@@ -63,6 +67,8 @@ export const createCopilotSlice: StateCreator<
   setConfidence: (score) => set({ confidence: score }),
 
   setStatus: (stage) => set({ pipelineStatus: stage }),
+
+  setToolUsed: (tool) => set({ toolUsed: tool }),
 
   finishStream: (sessionId) =>
     set((state) => {
@@ -80,6 +86,7 @@ export const createCopilotSlice: StateCreator<
         isStreaming: false,
         streamingContent: "",
         pipelineStatus: null,
+        toolUsed: null,
         messages: [...state.messages, msg],
       };
     }),

@@ -16,6 +16,7 @@ from neo4j.exceptions import (
     ServiceUnavailable,
     SessionExpired,
 )
+from neo4j.graph import Node, Path, Relationship
 from neo4j.time import Date, DateTime, Duration, Time
 
 from app.core.logging import get_logger
@@ -379,7 +380,8 @@ class Neo4jService:
                 {},
                 timeout_ms,
             )
-        return [dict(r) for r in result]
+        rows = [dict(r) for r in result]
+        return [{k: _unpack_neo4j_value(v) for k, v in row.items()} for row in rows]
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -557,6 +559,24 @@ def _record_to_edge(rel: Any) -> dict[str, Any]:
         "target": rel.end_node.element_id,
         "properties": _sanitize_props(rel),
     }
+
+
+def _unpack_neo4j_value(value: Any) -> Any:
+    """Convert Neo4j driver objects to JSON-serializable dicts."""
+    if isinstance(value, Path):
+        elements: list[Any] = []
+        for i, node in enumerate(value.nodes):
+            if i > 0:
+                elements.append(_record_to_edge(value.relationships[i - 1]))
+            elements.append(_record_to_node(node))
+        return elements
+    if isinstance(value, Node):
+        return _record_to_node(value)
+    if isinstance(value, Relationship):
+        return _record_to_edge(value)
+    if isinstance(value, list):
+        return [_unpack_neo4j_value(v) for v in value]
+    return value
 
 
 def _escape_label(label: str) -> str:

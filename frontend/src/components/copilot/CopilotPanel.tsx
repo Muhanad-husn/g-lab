@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useStore } from "@/store";
 import { useSSE } from "@/hooks/useSSE";
 import { useReadOnlyMode } from "@/hooks/useReadOnlyMode";
@@ -23,6 +23,31 @@ function StatusDot({ status }: { status: string | null }) {
     <div className="flex items-center gap-1.5 px-3 py-1 text-[10px] text-muted-foreground border-b border-border bg-muted/30">
       <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
       {STATUS_LABELS[status] ?? status}
+    </div>
+  );
+}
+
+// ─── Cypher tool badge ──────────────────────────────────────────────────────────
+
+function CypherBadge({ cypher }: { cypher: string }) {
+  const [open, setOpen] = useState(false);
+  const toggle = useCallback(() => setOpen((v) => !v), []);
+
+  return (
+    <div className="px-3 py-1 border-b border-border bg-muted/20">
+      <button
+        className="flex items-center gap-1.5 text-[10px] text-muted-foreground hover:text-foreground"
+        onClick={toggle}
+      >
+        <span className="font-mono">{">"}</span>
+        <span>Cypher query used</span>
+        <span className="ml-1">{open ? "▾" : "▸"}</span>
+      </button>
+      {open && (
+        <pre className="mt-1 p-1.5 rounded bg-muted text-[10px] font-mono text-foreground overflow-x-auto whitespace-pre-wrap break-all">
+          {cypher}
+        </pre>
+      )}
     </div>
   );
 }
@@ -102,6 +127,8 @@ export function CopilotPanel() {
   const appendDocEvidence = useStore((s) => s.appendDocEvidence);
   const setConfidence = useStore((s) => s.setConfidence);
   const setStatus = useStore((s) => s.setStatus);
+  const setToolUsed = useStore((s) => s.setToolUsed);
+  const toolUsed = useStore((s) => s.toolUsed);
   const finishStream = useStore((s) => s.finishStream);
   const addMessage = useStore((s) => s.addMessage);
   const snapshotCanvas = useStore((s) => s.snapshotCanvas);
@@ -158,6 +185,7 @@ export function CopilotPanel() {
             });
           },
           onConfidence: (score) => setConfidence(score),
+          onToolUsed: (data) => setToolUsed(data),
           onStatus: ({ stage }) => setStatus(stage),
           onDone: () => finishStream(sessionId!),
           onError: (err) => {
@@ -222,6 +250,7 @@ export function CopilotPanel() {
 
       {/* Pipeline status */}
       <StatusDot status={pipelineStatus} />
+      {toolUsed?.cypher && <CypherBadge cypher={toolUsed.cypher} />}
 
       {/* Message list */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
