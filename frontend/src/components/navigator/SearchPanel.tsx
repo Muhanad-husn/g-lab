@@ -7,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { search } from "@/api/graph";
 import { useStore } from "@/store";
 import { useGraphActions } from "@/hooks/useGraphActions";
+import { getDisplayLabel } from "@/components/canvas/cytoscapeStyles";
 import type { GraphNode } from "@/lib/types";
 
 // ─── Result item ──────────────────────────────────────────────────────────────
@@ -19,10 +20,7 @@ interface ResultItemProps {
 
 function ResultItem({ node, onAdd, onAddExpand }: ResultItemProps) {
   const label = node.labels[0] ?? "Node";
-  // Show the first string property as display name
-  const displayName =
-    Object.values(node.properties).find((v) => typeof v === "string") ??
-    node.id;
+  const displayName = getDisplayLabel(node.properties, node.labels);
 
   return (
     <div

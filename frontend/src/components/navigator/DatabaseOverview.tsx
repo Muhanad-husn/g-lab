@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon, Search } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -22,7 +22,13 @@ function CountBadge({ count }: { count: number | null }) {
 
 // ─── Sample table with pagination ─────────────────────────────────────────────
 
-function SampleTable({ rows }: { rows: Record<string, unknown>[] }) {
+interface SampleTableProps {
+  rows: Record<string, unknown>[];
+  isRelType?: boolean;
+  onSearchName?: (name: string) => void;
+}
+
+function SampleTable({ rows, isRelType = false, onSearchName }: SampleTableProps) {
   const [page, setPage] = useState(0);
 
   if (rows.length === 0) {
@@ -51,6 +57,9 @@ function SampleTable({ rows }: { rows: Record<string, unknown>[] }) {
                 {col}
               </th>
             ))}
+            {!isRelType && onSearchName && (
+              <th className="w-6 border-b border-border" />
+            )}
           </tr>
         </thead>
         <tbody>
@@ -68,6 +77,17 @@ function SampleTable({ rows }: { rows: Record<string, unknown>[] }) {
                   )}
                 </td>
               ))}
+              {!isRelType && onSearchName && (
+                <td className="px-1 py-1">
+                  <button
+                    title={`Search for ${String(row.name ?? "")}`}
+                    className="p-0.5 rounded hover:bg-primary/20 text-muted-foreground hover:text-primary"
+                    onClick={() => onSearchName(String(row.name ?? ""))}
+                  >
+                    <Search className="h-3 w-3" />
+                  </button>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
@@ -147,7 +167,6 @@ function LabelRow({ name, count, isRelType = false }: LabelRowProps) {
   const [loading, setLoading] = useState(false);
   const setNavigatorTab = useStore((s) => s.setNavigatorTab);
   const setSearchQuery = useStore((s) => s.setSearchQuery);
-  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function handleToggle() {
     const next = !expanded;
@@ -166,26 +185,15 @@ function LabelRow({ name, count, isRelType = false }: LabelRowProps) {
     }
   }
 
-  function handleClick() {
-    if (clickTimer.current) {
-      // Second click arrived — it's a double-click
-      clearTimeout(clickTimer.current);
-      clickTimer.current = null;
-      setSearchQuery(name);
-      setNavigatorTab("search");
-    } else {
-      // First click — wait to see if double-click follows
-      clickTimer.current = setTimeout(() => {
-        clickTimer.current = null;
-        void handleToggle();
-      }, 250);
-    }
+  function handleSearchName(displayName: string) {
+    setSearchQuery(displayName);
+    setNavigatorTab("search");
   }
 
   return (
     <div>
       <button
-        onClick={handleClick}
+        onClick={() => void handleToggle()}
         className="flex w-full items-center gap-1.5 px-3 py-1.5 text-xs hover:bg-accent/50 rounded-sm transition-colors"
       >
         {expanded ? (
@@ -195,33 +203,19 @@ function LabelRow({ name, count, isRelType = false }: LabelRowProps) {
         )}
         <span className="flex-1 text-left text-foreground font-mono">{name}</span>
         <CountBadge count={count} />
-        <span
-          role="button"
-          tabIndex={0}
-          title={`Search for ${name}`}
-          className="p-0.5 rounded hover:bg-primary/20 text-muted-foreground hover:text-primary"
-          onClick={(e) => {
-            e.stopPropagation();
-            setSearchQuery(name);
-            setNavigatorTab("search");
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.stopPropagation();
-              setSearchQuery(name);
-              setNavigatorTab("search");
-            }
-          }}
-        >
-          <Search className="h-3 w-3" />
-        </span>
       </button>
       {expanded && (
         <div className="ml-3 border-l border-border">
           {loading ? (
             <p className="px-4 py-2 text-xs text-muted-foreground">Loading…</p>
           ) : (
-            samples !== null && <SampleTable rows={samples} />
+            samples !== null && (
+              <SampleTable
+                rows={samples}
+                isRelType={isRelType}
+                onSearchName={isRelType ? undefined : handleSearchName}
+              />
+            )
           )}
         </div>
       )}
