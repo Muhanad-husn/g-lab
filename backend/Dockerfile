@@ -8,7 +8,10 @@ COPY alembic.ini .
 COPY alembic/ alembic/
 COPY app/ app/
 
-RUN pip install --no-cache-dir .
+# Install with document extras; force CPU-only PyTorch to save ~500MB
+RUN pip install --no-cache-dir \
+    --extra-index-url https://download.pytorch.org/whl/cpu \
+    ".[documents]"
 
 # Create data directory
 RUN mkdir -p /data
