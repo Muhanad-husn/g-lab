@@ -161,11 +161,11 @@ class CopilotPipeline:
         models = preset_config.models
         budgets = preset_config.tokenBudgets
 
-        router_model = models.get("router", "anthropic/claude-3-haiku-20240307")
+        router_model = models.get("router", "anthropic/claude-3-haiku")
         retrieval_model = models.get(
-            "graphRetrieval", "anthropic/claude-3-haiku-20240307"
+            "graphRetrieval", "anthropic/claude-3-haiku"
         )
-        synth_model = models.get("synthesiser", "anthropic/claude-3-haiku-20240307")
+        synth_model = models.get("synthesiser", "anthropic/claude-3-haiku")
 
         router_tokens = budgets.get("router", 256)
         retrieval_tokens = budgets.get("graphRetrieval", 512)
@@ -200,7 +200,7 @@ class CopilotPipeline:
         if retrieval_service is not None and reranker_service is not None:
             doc_role = DocumentRetrievalRole(retrieval_service, reranker_service)
 
-        if doc_role is not None and intent.needs_docs and library_id:
+        if doc_role is not None and library_id:
             yield SSEEvent(event="status", data={"stage": "retrieving_docs"})
 
         graph_coro = graph_retrieval_svc.retrieve(
@@ -218,6 +218,7 @@ class CopilotPipeline:
                 library_id=library_id,
                 top_k=doc_top_k,
                 reranker_top_k=reranker_top_k,
+                user_query=request.query,
             )
             if doc_role is not None
             else _empty_doc_result()
@@ -296,6 +297,7 @@ class CopilotPipeline:
                     library_id=library_id,
                     top_k=doc_top_k + 5,
                     reranker_top_k=reranker_top_k,
+                    user_query=request.query,
                 )
                 if doc_role is not None
                 else _empty_doc_result()

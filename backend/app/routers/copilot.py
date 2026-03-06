@@ -20,10 +20,14 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.core.logging import get_logger
 from app.dependencies import (
     get_action_logger,
+    get_chromadb,
     get_copilot_semaphore,
     get_db,
+    get_embedding_service,
     get_openrouter,
+    get_reranker,
 )
+from app.models.db import SessionLibraryAttachment
 from app.models.enums import ActionType
 from app.models.schemas import CopilotQueryRequest, PresetConfig
 from app.services.action_log import ActionLogger
@@ -31,6 +35,9 @@ from app.services.conversation_service import ConversationService
 from app.services.copilot.openrouter import OpenRouterClient
 from app.services.copilot.pipeline import CopilotPipeline, format_schema_summary
 from app.services.copilot.sse import format_sse
+from app.services.documents.chromadb_client import ChromaDBClient
+from app.services.documents.embeddings import EmbeddingService
+from app.services.documents.retrieval import DocumentRetrievalService
 from app.services.guardrails import GuardrailService
 from app.utils.response import envelope, error_response
 
@@ -55,6 +62,9 @@ async def query(
     openrouter: OpenRouterClient | None = Depends(get_openrouter),
     semaphore: asyncio.Semaphore = Depends(get_copilot_semaphore),
     action_logger: ActionLogger = Depends(get_action_logger),
+    chromadb_client: ChromaDBClient | None = Depends(get_chromadb),
+    embedding_service: EmbeddingService | None = Depends(get_embedding_service),
+    reranker_service: Any = Depends(get_reranker),
 ) -> Any:
     """Stream a copilot response as Server-Sent Events.
 
@@ -98,6 +108,16 @@ async def query(
             update={"models": {**preset_config.models, **body.model_assignments}}
         )
 
+    # --- Document retrieval setup (optional) ---
+    retrieval_service = None
+    library_id: str | None = None
+    if chromadb_client is not None and embedding_service is not None:
+        retrieval_service = DocumentRetrievalService(chromadb_client, embedding_service)
+        # Look up attached library for this session
+        attachment = await db.get(SessionLibraryAttachment, body.session_id)
+        if attachment is not None:
+            library_id = attachment.library_id
+
     # Get session factory for post-stream DB writes
     session_factory: async_sessionmaker[AsyncSession] = (
         request.app.state.db_session_factory
@@ -113,6 +133,9 @@ async def query(
             session_id=body.session_id,
             semaphore=semaphore,
             schema_summary=schema_summary,
+            retrieval_service=retrieval_service,
+            reranker_service=reranker_service,
+            library_id=library_id,
         ):
             # Collect assistant text for conversation storage
             if event.event == "text_chunk" and isinstance(event.data, dict):

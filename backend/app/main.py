@@ -24,6 +24,7 @@ from app.services.action_log import ActionLogger
 from app.services.copilot.openrouter import OpenRouterClient
 from app.services.documents.chromadb_client import ChromaDBClient
 from app.services.documents.embeddings import EmbeddingService
+from app.services.documents.reranker import RerankerService
 from app.services.neo4j_service import Neo4jService
 from app.services.preset_service import PresetService
 from app.utils.exceptions import Neo4jConnectionError
@@ -87,11 +88,12 @@ async def lifespan(app: FastAPI):  # type: ignore[no-untyped-def]
         app.state.openrouter_client = None
         logger.info("openrouter_not_configured")
 
-    # --- ChromaDB client + Embedding service (optional) ---
+    # --- ChromaDB client + Embedding service + Reranker (optional) ---
     chromadb_client = ChromaDBClient()
     app.state.chromadb_client = chromadb_client
     embedding_service = EmbeddingService(model_name=settings.EMBEDDING_MODEL)
     app.state.embedding_service = embedding_service
+    app.state.reranker_service = RerankerService()
 
     try:
         await chromadb_client.connect(

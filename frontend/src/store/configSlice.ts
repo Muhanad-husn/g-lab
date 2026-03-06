@@ -40,7 +40,7 @@ export interface ConfigSlice {
 // ─── Defaults ─────────────────────────────────────────────────────────────────
 
 const DEFAULT_MODEL_ASSIGNMENTS = {
-  router: "anthropic/claude-3-haiku-20240307",
+  router: "anthropic/claude-3-haiku",
   graphRetrieval: "anthropic/claude-3-5-sonnet-20241022",
   synthesiser: "anthropic/claude-3.5-sonnet",
 };

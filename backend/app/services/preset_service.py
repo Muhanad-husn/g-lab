@@ -26,7 +26,7 @@ _SYSTEM_PRESETS: list[dict[str, object]] = [
             hops=2,
             expansionLimit=25,
             models={
-                "router": "anthropic/claude-3-haiku-20240307",
+                "router": "anthropic/claude-3-haiku",
                 "graphRetrieval": "anthropic/claude-3-5-sonnet-20241022",
                 "synthesiser": "anthropic/claude-3.5-sonnet",
             },
@@ -44,8 +44,8 @@ _SYSTEM_PRESETS: list[dict[str, object]] = [
             hops=1,
             expansionLimit=10,
             models={
-                "router": "anthropic/claude-3-haiku-20240307",
-                "graphRetrieval": "anthropic/claude-3-haiku-20240307",
+                "router": "anthropic/claude-3-haiku",
+                "graphRetrieval": "anthropic/claude-3-haiku",
                 "synthesiser": "anthropic/claude-3-5-sonnet-20241022",
             },
             tokenBudgets={
@@ -139,19 +139,22 @@ class PresetService:
         return True
 
     async def seed_system_presets(self, db: AsyncSession) -> None:
-        """Insert system presets if they don't already exist (idempotent)."""
+        """Insert or update system presets (idempotent)."""
         for preset_def in _SYSTEM_PRESETS:
+            config_obj = preset_def["config"]
+            assert isinstance(config_obj, PresetConfig)
+            config_json = config_obj.model_dump_json()
             existing = await db.get(Preset, str(preset_def["id"]))
             if existing is None:
-                config_obj = preset_def["config"]
-                assert isinstance(config_obj, PresetConfig)
                 preset = Preset(
                     id=str(preset_def["id"]),
                     name=str(preset_def["name"]),
                     is_system=1,
-                    config=config_obj.model_dump_json(),
+                    config=config_json,
                 )
                 db.add(preset)
+            elif existing.is_system and existing.config != config_json:
+                existing.config = config_json
         await db.commit()
 
     @staticmethod

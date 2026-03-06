@@ -39,30 +39,30 @@ class DocumentRetrievalRole:
         library_id: str | None,
         top_k: int = 5,
         reranker_top_k: int = 3,
+        user_query: str = "",
     ) -> tuple[list[DocumentChunk], list[EvidenceSource]]:
         """Retrieve and rerank document chunks for the given intent.
 
-        Returns an empty tuple when skipped (``needs_docs=False`` or no
-        library attached).
+        Returns an empty tuple when skipped (no library attached or no
+        usable query).
 
         Args:
             intent: Routing decision from RouterService.
             library_id: ID of the attached library, or None.
             top_k: Number of chunks to fetch from ChromaDB.
             reranker_top_k: Number of chunks to keep after reranking.
+            user_query: Original user question — used as fallback when
+                ``intent.doc_query`` is empty.
 
         Returns:
             ``(chunks, evidence_sources)`` — both empty when skipped.
         """
-        if not intent.needs_docs:
-            logger.debug("doc_retrieval_skipped", reason="needs_docs=False")
-            return [], []
-
         if not library_id:
             logger.debug("doc_retrieval_skipped", reason="no_library_attached")
             return [], []
 
-        query = intent.doc_query or ""
+        # Use the router's doc_query when available, fall back to user query
+        query = intent.doc_query or user_query
         if not query:
             logger.debug("doc_retrieval_skipped", reason="empty_doc_query")
             return [], []

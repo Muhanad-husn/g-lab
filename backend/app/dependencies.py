@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncGenerator
 from functools import lru_cache
+from typing import Any
 
 from fastapi import HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -73,6 +74,11 @@ def get_chromadb(request: Request) -> ChromaDBClient | None:
 def get_embedding_service(request: Request) -> EmbeddingService | None:
     """Return the EmbeddingService from app state, or None if not configured."""
     return getattr(request.app.state, "embedding_service", None)
+
+
+def get_reranker(request: Request) -> Any:
+    """Return the RerankerService from app state, or None if not configured."""
+    return getattr(request.app.state, "reranker_service", None)
 
 
 def get_neo4j(request: Request) -> Neo4jService:
