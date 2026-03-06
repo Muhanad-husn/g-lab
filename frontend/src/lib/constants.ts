@@ -4,7 +4,7 @@ export const HARD_LIMITS = {
   MAX_HOPS: 5,
   MAX_NODES_PER_EXPANSION: 100,
   CYPHER_TIMEOUT_MS: 30_000,
-  COPILOT_TIMEOUT_MS: 120_000,
+  COPILOT_TIMEOUT_MS: 300_000,
 } as const;
 
 // Canvas warning thresholds (for CanvasBanners in Stage 6)
@@ -50,7 +50,7 @@ export const API_BASE = "/api/v1";
 
 // ─── Phase 2: Copilot constants ───────────────────────────────────────────────
 
-export const COPILOT_TIMEOUT_MS = 120_000;
+export const COPILOT_TIMEOUT_MS = 300_000;
 
 export const CONFIDENCE_BANDS = {
   HIGH: { threshold: 0.7, label: "High", color: "green" },

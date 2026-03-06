@@ -49,7 +49,7 @@ class OpenRouterClient:
                     "HTTP-Referer": "https://g-lab.local",
                     "X-Title": "G-Lab",
                 },
-                timeout=httpx.Timeout(120.0, connect=10.0),
+                timeout=httpx.Timeout(300.0, connect=10.0),
             )
         return self._client
 

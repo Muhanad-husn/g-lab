@@ -32,7 +32,7 @@ from app.services.guardrails import GuardrailService
 
 logger: Any = get_logger(__name__)
 
-_COPILOT_TIMEOUT_S = 120.0
+_COPILOT_TIMEOUT_S = 300.0
 _RE_RETRIEVAL_THRESHOLD = 0.40  # confidence < this triggers re-retrieval
 
 _GUARDRAILS = GuardrailService()
