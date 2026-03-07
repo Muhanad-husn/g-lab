@@ -46,8 +46,6 @@ services:
       dockerfile: Dockerfile
     ports:
       - "127.0.0.1:5173:80"
-    volumes:
-      - ./frontend/dist:/usr/share/nginx/html
     depends_on:
       backend:
         condition: service_healthy

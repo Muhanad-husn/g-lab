@@ -3,7 +3,6 @@ import { Bookmark, Bot, MessageSquarePlus } from "lucide-react";
 import { useStore } from "@/store";
 import { useSSE } from "@/hooks/useSSE";
 import { useReadOnlyMode } from "@/hooks/useReadOnlyMode";
-import { PanelHeader } from "@/components/shared/PanelHeader";
 import { ConfidenceBadge } from "./ConfidenceBadge";
 import { API_BASE } from "@/lib/constants";
 import { createFinding } from "@/api/findings";
@@ -331,40 +330,44 @@ export function CopilotPanel() {
   return (
     <div className="flex flex-col h-full bg-card">
       {/* Header */}
-      <PanelHeader title="Copilot">
+      {/* Header */}
+      <div className="h-9 flex items-center px-3 border-b border-border shrink-0 gap-2">
+        <span className="text-xs font-semibold text-foreground">Copilot</span>
         {isReadOnly && (
           <span className="text-[10px] text-muted-foreground">(offline)</span>
         )}
         {!sessionId && (
           <span className="text-[10px] text-muted-foreground">(no session)</span>
         )}
-        {messages.length > 0 && !isStreaming && (
-          <button
-            className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1"
-            onClick={() => void handleNewChat()}
-            title="Start a new conversation"
-          >
-            <MessageSquarePlus className="h-3 w-3" />
-            New Chat
-          </button>
-        )}
-        {canvasSnapshot && !isStreaming && (
-          <button
-            className="text-[10px] text-muted-foreground hover:text-foreground"
-            onClick={revertToSnapshot}
-          >
-            Undo canvas change
-          </button>
-        )}
-        {isStreaming && (
-          <button
-            className="text-[10px] text-muted-foreground hover:text-foreground"
-            onClick={stopSSE}
-          >
-            Stop
-          </button>
-        )}
-      </PanelHeader>
+        <div className="ml-auto flex items-center gap-1.5">
+          {canvasSnapshot && !isStreaming && (
+            <button
+              className="text-[10px] text-muted-foreground hover:text-foreground"
+              onClick={revertToSnapshot}
+            >
+              Undo canvas change
+            </button>
+          )}
+          {isStreaming && (
+            <button
+              className="text-[10px] text-muted-foreground hover:text-foreground"
+              onClick={stopSSE}
+            >
+              Stop
+            </button>
+          )}
+          {sessionId && !isStreaming && (
+            <button
+              className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30"
+              onClick={() => void handleNewChat()}
+              title="Start new conversation"
+              disabled={messages.length === 0}
+            >
+              <MessageSquarePlus className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Pipeline status */}
       <StatusDot status={pipelineStatus} />
