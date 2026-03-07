@@ -93,7 +93,7 @@ For development or if you want to build the images yourself:
 
 ```bash
 # 1. Clone the repo
-git clone <repo-url> g-lab && cd g-lab
+git clone https://github.com/Muhanad-husn/g-lab.git && cd g-lab
 
 # 2. Configure environment
 cp .env.example .env
@@ -273,4 +273,4 @@ G-Lab is open for contributions. If you work with graph data and have ideas for 
 
 ## License
 
-_TBD_
+[PolyForm Noncommercial 1.0.0](LICENSE.md) — free for personal, research, educational, and non-profit use. Commercial use requires a separate license.
