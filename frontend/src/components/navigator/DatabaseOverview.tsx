@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon, Search } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon, Database, Search } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { getSchema, getSamples, getRelSamples } from "@/api/graph";
 import { useStore } from "@/store";
+import { PanelHeader } from "@/components/shared/PanelHeader";
+import { SectionHeader } from "@/components/shared/SectionHeader";
 import { getDisplayLabel } from "@/components/canvas/cytoscapeStyles";
 import type { CentralNode, LabelInfo, RelTypeInfo } from "@/lib/types";
 
@@ -244,9 +246,7 @@ function CentralNodesSection({ nodes }: { nodes: CentralNode[] }) {
 
   return (
     <>
-      <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-        Central Nodes (by degree)
-      </p>
+      <SectionHeader>Central Nodes (by degree)</SectionHeader>
       {nodes.map((n) => {
         const displayName = getDisplayLabel(n.properties, n.labels);
         return (
@@ -327,59 +327,69 @@ export function DatabaseOverview() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full text-muted-foreground text-xs">
-        Loading schema…
+      <div className="flex flex-col h-full">
+        <PanelHeader title="Database" />
+        <div className="flex items-center justify-center flex-1 text-muted-foreground text-xs">
+          Loading schema…
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-xs gap-1 px-4 text-center">
-        <span className="text-destructive">{error}</span>
-        <span className="text-[10px]">Check Neo4j connection</span>
+      <div className="flex flex-col h-full">
+        <PanelHeader title="Database" />
+        <div className="flex flex-col items-center justify-center flex-1 text-muted-foreground text-xs gap-1 px-4 text-center">
+          <span className="text-destructive">{error}</span>
+          <span className="text-[10px]">Check Neo4j connection</span>
+        </div>
       </div>
     );
   }
 
   if (labels.length === 0 && relTypes.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-muted-foreground text-xs">
-        Connect to Neo4j to view schema
+      <div className="flex flex-col h-full">
+        <PanelHeader title="Database" />
+        <div className="flex flex-col items-center justify-center flex-1 text-muted-foreground gap-2 px-6 text-center">
+          <Database className="h-6 w-6 opacity-30" />
+          <span className="text-xs">Connect to Neo4j to view schema</span>
+          <span className="text-[10px] opacity-60">Use the connection settings in the toolbar</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <ScrollArea className="h-full">
-      <div className="px-1 py-2 space-y-0.5">
-        <CentralNodesSection nodes={centralNodes} />
-        {labels.length > 0 && (
-          <>
-            <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Node Labels ({labels.length})
-            </p>
-            {labels.map((l) => (
-              <LabelRow key={l.name} name={l.name} count={l.count} />
-            ))}
-          </>
-        )}
+    <div className="flex flex-col h-full">
+      <PanelHeader title="Database" />
+      <ScrollArea className="flex-1">
+        <div className="px-1 py-2 space-y-0.5">
+          <CentralNodesSection nodes={centralNodes} />
+          {labels.length > 0 && (
+            <>
+              <SectionHeader count={labels.length}>Node Labels</SectionHeader>
+              {labels.map((l) => (
+                <LabelRow key={l.name} name={l.name} count={l.count} />
+              ))}
+            </>
+          )}
 
-        {labels.length > 0 && relTypes.length > 0 && (
-          <Separator className="my-2" />
-        )}
+          {labels.length > 0 && relTypes.length > 0 && (
+            <Separator className="my-2" />
+          )}
 
-        {relTypes.length > 0 && (
-          <>
-            <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Relationship Types ({relTypes.length})
-            </p>
-            {relTypes.map((r) => (
-              <LabelRow key={r.name} name={r.name} count={r.count} isRelType />
-            ))}
-          </>
-        )}
-      </div>
-    </ScrollArea>
+          {relTypes.length > 0 && (
+            <>
+              <SectionHeader count={relTypes.length}>Relationship Types</SectionHeader>
+              {relTypes.map((r) => (
+                <LabelRow key={r.name} name={r.name} count={r.count} isRelType />
+              ))}
+            </>
+          )}
+        </div>
+      </ScrollArea>
+    </div>
   );
 }

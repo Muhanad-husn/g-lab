@@ -1,25 +1,9 @@
 import { useState } from "react";
+import { FileSearch } from "lucide-react";
 import { useStore } from "@/store";
-import { Badge } from "@/components/ui/badge";
-import { PARSE_QUALITY_TIERS } from "@/lib/constants";
-import type { EvidenceSource, ParseTier } from "@/lib/types";
-
-// ─── Parse tier badge ─────────────────────────────────────────────────────────
-
-const PARSE_TIER_VARIANT: Record<ParseTier, "default" | "secondary" | "outline"> = {
-  high: "default",
-  standard: "secondary",
-  basic: "outline",
-  pending: "outline",
-};
-
-function ParseTierBadge({ tier }: { tier: ParseTier }) {
-  return (
-    <Badge variant={PARSE_TIER_VARIANT[tier]} className="text-[9px] h-4 px-1">
-      {PARSE_QUALITY_TIERS[tier].label}
-    </Badge>
-  );
-}
+import { ParseTierBadge } from "@/components/shared/ParseTierBadge";
+import { SectionHeader } from "@/components/shared/SectionHeader";
+import type { EvidenceSource } from "@/lib/types";
 
 // ─── Evidence item ────────────────────────────────────────────────────────────
 
@@ -100,8 +84,10 @@ export function EvidencePanel() {
 
   if (evidence.length === 0) {
     return (
-      <div className="px-3 py-4 text-xs text-muted-foreground text-center">
-        No evidence sources for the current answer.
+      <div className="flex flex-col items-center justify-center h-32 text-muted-foreground gap-2 px-6 text-center">
+        <FileSearch className="h-6 w-6 opacity-30" />
+        <span className="text-xs">No evidence sources</span>
+        <span className="text-[10px] opacity-60">Evidence will appear here after a Copilot query</span>
       </div>
     );
   }
@@ -112,11 +98,7 @@ export function EvidencePanel() {
 
   return (
     <div className="flex flex-col">
-      <div className="px-3 py-1.5 border-b border-border">
-        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
-          Evidence ({evidence.length})
-        </span>
-      </div>
+      <SectionHeader count={evidence.length}>Evidence</SectionHeader>
       {evidence.map((src, i) => (
         <EvidenceItem
           key={`${src.type}-${src.id}-${i}`}

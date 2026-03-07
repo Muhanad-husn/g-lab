@@ -3,8 +3,9 @@ import { Upload, X, FileText, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/store";
 import { useDocumentActions } from "@/hooks/useDocumentActions";
+import { ParseTierBadge } from "@/components/shared/ParseTierBadge";
 import { MAX_DOC_UPLOAD_SIZE_MB } from "@/lib/constants";
-import type { DocumentUploadResponse } from "@/lib/types";
+import type { DocumentUploadResponse, ParseTier } from "@/lib/types";
 
 // ─── Accepted MIME types ───────────────────────────────────────────────────────
 
@@ -17,24 +18,6 @@ const ACCEPTED = {
 
 const ACCEPTED_MIME = Object.keys(ACCEPTED).join(",");
 
-// ─── ParseTier badge ──────────────────────────────────────────────────────────
-
-const TIER_COLORS: Record<string, string> = {
-  high: "bg-green-500/20 text-green-400 border-green-500/30",
-  standard: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-  basic: "bg-orange-500/20 text-orange-400 border-orange-500/30",
-};
-
-function TierBadge({ tier }: { tier: string }) {
-  return (
-    <span
-      className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${(TIER_COLORS[tier] ?? TIER_COLORS.basic)}`}
-    >
-      {tier}
-    </span>
-  );
-}
-
 // ─── UploadResult row ─────────────────────────────────────────────────────────
 
 interface UploadResultRowProps {
@@ -46,7 +29,7 @@ function UploadResultRow({ result }: UploadResultRowProps) {
     <div className="flex items-center gap-2 px-3 py-1.5 text-xs border-b border-border last:border-0">
       <CheckCircle className="h-3 w-3 shrink-0 text-green-400" />
       <span className="truncate flex-1 text-foreground">{result.filename}</span>
-      <TierBadge tier={result.parse_tier} />
+      <ParseTierBadge tier={result.parse_tier as ParseTier} />
       <span className="text-muted-foreground shrink-0 text-[10px]">
         {result.chunk_count} chunks
       </span>

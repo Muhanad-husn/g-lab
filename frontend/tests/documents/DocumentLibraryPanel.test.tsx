@@ -18,8 +18,10 @@ vi.mock("@/hooks/useDocumentActions", () => ({
     attachLibrary: mockAttachLibrary,
     detachLibrary: mockDetachLibrary,
     fetchLibraries: vi.fn(),
+    listDocuments: vi.fn().mockResolvedValue([]),
     uploadFiles: vi.fn(),
     removeDocument: vi.fn(),
+    ingestDocument: vi.fn(),
   }),
 }));
 

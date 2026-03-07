@@ -123,7 +123,7 @@ export function CanvasControls() {
                     <button
                       key={n}
                       onClick={() => setHops(n)}
-                      className={`h-5 w-5 rounded text-[10px] border transition-colors ${
+                      className={`h-6 w-6 rounded text-[10px] border transition-colors ${
                         hops === n
                           ? "border-primary bg-primary text-primary-foreground"
                           : "border-border text-muted-foreground hover:border-primary/50"

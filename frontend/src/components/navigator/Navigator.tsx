@@ -47,7 +47,7 @@ export function Navigator() {
               title={tab.label}
               className={`w-10 h-10 flex items-center justify-center transition-colors hover:bg-accent/50 ${
                 isActive
-                  ? "border-l-2 border-primary text-foreground"
+                  ? "border-l-2 border-primary text-foreground bg-primary/10"
                   : "border-l-2 border-transparent text-muted-foreground"
               }`}
             >

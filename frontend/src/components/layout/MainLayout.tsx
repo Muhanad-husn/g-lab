@@ -18,7 +18,7 @@ interface MainLayoutProps {
 
 function HResizeHandle() {
   return (
-    <PanelResizeHandle className="w-1 bg-border hover:bg-primary/40 transition-colors" />
+    <PanelResizeHandle className="w-1.5 bg-border hover:bg-primary/50 active:bg-primary/60 transition-colors" />
   );
 }
 

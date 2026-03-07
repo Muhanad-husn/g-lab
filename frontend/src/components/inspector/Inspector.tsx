@@ -1,7 +1,8 @@
-import { PanelRightClose } from "lucide-react";
+import { MousePointerClick, PanelRightClose } from "lucide-react";
 import { useStore } from "@/store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { PanelHeader } from "@/components/shared/PanelHeader";
 import { NodeDetail } from "./NodeDetail";
 import { EdgeDetail } from "./EdgeDetail";
 import { EvidencePanel } from "@/components/copilot/EvidencePanel";
@@ -24,8 +25,10 @@ export function Inspector() {
   const propertiesContent = (
     <ScrollArea className="flex-1">
       {!selectedId && (
-        <div className="flex flex-col items-center justify-center h-32 text-muted-foreground text-xs gap-2">
-          <span>Select a node or relationship</span>
+        <div className="flex flex-col items-center justify-center h-32 text-muted-foreground gap-2 px-6 text-center">
+          <MousePointerClick className="h-6 w-6 opacity-30" />
+          <span className="text-xs">Select a node or relationship</span>
+          <span className="text-[10px] opacity-60">Click an element on the canvas to inspect its properties</span>
         </div>
       )}
       {selectedId && isNode && <NodeDetail id={selectedId} />}
@@ -41,21 +44,20 @@ export function Inspector() {
   return (
     <div className="flex flex-col h-full border-l border-border">
       {/* Header */}
-      <div className="h-10 flex items-center px-3 border-b border-border shrink-0">
-        <span className="text-xs font-semibold text-foreground">Inspector</span>
+      <PanelHeader title="Inspector">
         {selectedId && (
-          <span className="ml-2 text-[10px] font-mono text-muted-foreground truncate">
+          <span className="text-[10px] font-mono text-muted-foreground truncate max-w-[120px]">
             {selectedId}
           </span>
         )}
         <button
           onClick={() => setPanelState("inspectorCollapsed", true)}
           title="Collapse inspector"
-          className="ml-auto p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
         >
           <PanelRightClose className="h-4 w-4" />
         </button>
-      </div>
+      </PanelHeader>
 
       {/* Content — tabbed when evidence is available */}
       {hasEvidence ? (

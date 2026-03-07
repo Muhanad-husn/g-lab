@@ -7,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { search } from "@/api/graph";
 import { useStore } from "@/store";
 import { useGraphActions } from "@/hooks/useGraphActions";
+import { PanelHeader } from "@/components/shared/PanelHeader";
 import { getDisplayLabel } from "@/components/canvas/cytoscapeStyles";
 import type { GraphNode } from "@/lib/types";
 
@@ -125,6 +126,7 @@ export function SearchPanel() {
 
   return (
     <div className="flex flex-col h-full">
+      <PanelHeader title="Search" />
       {/* Search input */}
       <form onSubmit={handleSearch} className="px-3 py-2">
         <div className="relative">
@@ -153,8 +155,10 @@ export function SearchPanel() {
       {/* Results list */}
       <ScrollArea className="flex-1 px-1">
         {results.length === 0 && !loading && (
-          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground text-xs gap-1">
-            {query ? "No results found" : "Enter a query to search"}
+          <div className="flex flex-col items-center justify-center h-32 text-muted-foreground gap-2 px-6 text-center">
+            <Search className="h-6 w-6 opacity-30" />
+            <span className="text-xs">{query ? "No results found" : "Enter a query to search"}</span>
+            <span className="text-[10px] opacity-60">{query ? "Try a different search term" : "Search for nodes by name or property value"}</span>
           </div>
         )}
         {results.map((node) => (

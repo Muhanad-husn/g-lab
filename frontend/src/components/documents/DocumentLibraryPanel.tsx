@@ -17,28 +17,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { useStore } from "@/store";
 import { useDocumentActions } from "@/hooks/useDocumentActions";
+import { PanelHeader } from "@/components/shared/PanelHeader";
+import { ParseTierBadge } from "@/components/shared/ParseTierBadge";
 import { DocumentUpload } from "./DocumentUpload";
-import { PARSE_QUALITY_TIERS } from "@/lib/constants";
 import type { DocumentInfo, DocumentLibrary, ParseTier } from "@/lib/types";
-
-// ─── Parse quality badge ──────────────────────────────────────────────────────
-
-const TIER_VARIANT: Record<ParseTier, "default" | "secondary" | "outline"> = {
-  high: "default",
-  standard: "secondary",
-  basic: "outline",
-  pending: "outline",
-};
-
-function ParseQualityBadge({ tier }: { tier: ParseTier | null }) {
-  if (!tier) return null;
-  const info = PARSE_QUALITY_TIERS[tier];
-  return (
-    <Badge variant={TIER_VARIANT[tier]} className="text-[9px] h-4 px-1">
-      {info.label}
-    </Badge>
-  );
-}
 
 // ─── Relative time helper ─────────────────────────────────────────────────────
 
@@ -117,7 +99,7 @@ function DocumentRow({ doc, libraryId }: DocumentRowProps) {
   }
 
   return (
-    <div className="flex items-center gap-1.5 px-2 py-1.5 text-xs border-b border-border/50 last:border-0">
+    <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs border-b border-border/50 last:border-0">
       <FileText className="h-3 w-3 shrink-0 text-muted-foreground" />
       <span className="truncate flex-1 text-foreground">{doc.filename}</span>
       {isPending ? (
@@ -142,7 +124,7 @@ function DocumentRow({ doc, libraryId }: DocumentRowProps) {
         </Button>
       ) : (
         <>
-          <ParseQualityBadge tier={tier as ParseTier} />
+          <ParseTierBadge tier={tier as ParseTier} />
           <span className="text-[10px] text-muted-foreground shrink-0">
             {chunks} chunks
           </span>
@@ -226,7 +208,7 @@ function LibraryRow({
               {" · "}
               {library.chunk_count.toLocaleString()} chunks
             </span>
-            <ParseQualityBadge tier={library.parse_quality} />
+            <ParseTierBadge tier={library.parse_quality} />
             <span className="text-[10px] text-muted-foreground ml-auto">
               {relativeTime(library.created_at)}
             </span>
@@ -372,10 +354,7 @@ export function DocumentLibraryPanel() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-          {libraries.length} librar{libraries.length !== 1 ? "ies" : "y"}
-        </span>
+      <PanelHeader title={`${libraries.length} librar${libraries.length !== 1 ? "ies" : "y"}`}>
         <Button
           variant="ghost"
           size="sm"
@@ -386,7 +365,7 @@ export function DocumentLibraryPanel() {
           <Plus className="h-3 w-3" />
           New
         </Button>
-      </div>
+      </PanelHeader>
 
       {/* Create form */}
       {showCreate && (
