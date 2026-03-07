@@ -270,5 +270,8 @@ Graph results:
 Document context:
 {doc_context}
 
+Previous conversation (maintain continuity with prior exchanges):
+{conversation_history}
+
 User query: {query}
 """

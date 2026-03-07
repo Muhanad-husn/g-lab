@@ -19,6 +19,8 @@ export interface CopilotSlice {
     | { cypher: string }
     | { tool: string; params: Record<string, unknown> }
     | null;
+  /** True when the backend trimmed older messages from the context window. */
+  contextTrimmed: boolean;
 
   startStream: () => void;
   appendTextChunk: (content: string) => void;
@@ -33,6 +35,9 @@ export interface CopilotSlice {
   finishStream: (sessionId: string) => void;
   addMessage: (message: CopilotMessage) => void;
   loadHistory: (messages: CopilotMessage[]) => void;
+  setContextTrimmed: (v: boolean) => void;
+  /** Reset all conversation state for a fresh chat. */
+  clearConversation: () => void;
 }
 
 // ─── Slice creator ────────────────────────────────────────────────────────────
@@ -50,6 +55,7 @@ export const createCopilotSlice: StateCreator<
   evidence: [],
   pipelineStatus: null,
   toolUsed: null,
+  contextTrimmed: false,
 
   startStream: () =>
     set({
@@ -59,6 +65,7 @@ export const createCopilotSlice: StateCreator<
       evidence: [],
       pipelineStatus: "starting",
       toolUsed: null,
+      contextTrimmed: false,
     }),
 
   appendTextChunk: (content) =>
@@ -100,4 +107,17 @@ export const createCopilotSlice: StateCreator<
     set((state) => ({ messages: [...state.messages, message] })),
 
   loadHistory: (messages) => set({ messages }),
+
+  setContextTrimmed: (v) => set({ contextTrimmed: v }),
+
+  clearConversation: () =>
+    set({
+      messages: [],
+      streamingContent: "",
+      confidence: null,
+      evidence: [],
+      toolUsed: null,
+      pipelineStatus: null,
+      contextTrimmed: false,
+    }),
 });

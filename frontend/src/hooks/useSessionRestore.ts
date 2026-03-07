@@ -1,12 +1,14 @@
 import { useEffect } from "react";
 import { getLastActive } from "@/api/sessions";
 import { listFindings } from "@/api/findings";
+import { getHistory } from "@/api/copilot";
 import { getOverview } from "@/api/graph";
 import { useStore } from "@/store";
 
 /**
  * On mount, fetches the last-active session and populates the session +
- * findings slices. Also fetches the database overview (non-critical).
+ * findings + conversation history slices. Also fetches the database
+ * overview (non-critical).
  *
  * Mount once in App.tsx.
  */
@@ -14,6 +16,7 @@ export function useSessionRestore(): void {
   const setSession = useStore((s) => s.setSession);
   const setFindings = useStore((s) => s.setFindings);
   const setDbOverview = useStore((s) => s.setDbOverview);
+  const loadHistory = useStore((s) => s.loadHistory);
 
   useEffect(() => {
     let cancelled = false;
@@ -32,6 +35,13 @@ export function useSessionRestore(): void {
       }
 
       try {
+        const messages = await getHistory(session.id);
+        if (!cancelled) loadHistory(messages);
+      } catch {
+        // History fetch failure is non-critical.
+      }
+
+      try {
         const overview = await getOverview();
         if (!cancelled) setDbOverview(overview);
       } catch {
@@ -43,5 +53,5 @@ export function useSessionRestore(): void {
     return () => {
       cancelled = true;
     };
-  }, [setSession, setFindings, setDbOverview]);
+  }, [setSession, setFindings, setDbOverview, loadHistory]);
 }

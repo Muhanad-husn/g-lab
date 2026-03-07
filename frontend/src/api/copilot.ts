@@ -1,6 +1,6 @@
 import { API_BASE } from "@/lib/constants";
 import type { CopilotMessage, CopilotQueryRequest } from "@/lib/types";
-import { get } from "./client";
+import { del, get } from "./client";
 
 /**
  * Submit a copilot query and return the raw Response for SSE streaming.
@@ -32,6 +32,16 @@ export async function getHistory(
   sessionId: string,
 ): Promise<CopilotMessage[]> {
   const { data } = await get<CopilotMessage[]>(
+    `/copilot/history/${sessionId}`,
+  );
+  return data;
+}
+
+/** Clear all conversation history for a session. */
+export async function clearHistory(
+  sessionId: string,
+): Promise<{ deleted: number }> {
+  const { data } = await del<{ deleted: number }>(
     `/copilot/history/${sessionId}`,
   );
   return data;

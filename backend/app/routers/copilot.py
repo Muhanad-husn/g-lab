@@ -123,6 +123,12 @@ async def query(
         request.app.state.db_session_factory
     )
 
+    # Fetch conversation history for multi-turn context
+    history_msgs = await _svc.get_history(db, body.session_id, limit=50)
+    conversation_history = [
+        {"role": m.role, "content": m.content} for m in history_msgs
+    ]
+
     async def _event_stream() -> AsyncGenerator[str, None]:
         full_text: list[str] = []
         async for event in _pipeline.execute(
@@ -136,6 +142,7 @@ async def query(
             retrieval_service=retrieval_service,
             reranker_service=reranker_service,
             library_id=library_id,
+            conversation_history=conversation_history,
         ):
             # Collect assistant text for conversation storage
             if event.event == "text_chunk" and isinstance(event.data, dict):
@@ -199,3 +206,18 @@ async def get_history(
     """Return conversation history for a session (oldest first, max *limit*)."""
     messages = await _svc.get_history(db, session_id, limit=limit)
     return envelope([m.model_dump() for m in messages])
+
+
+# ---------------------------------------------------------------------------
+# DELETE /history/{session_id}
+# ---------------------------------------------------------------------------
+
+
+@router.delete("/history/{session_id}")
+async def clear_history(
+    session_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Delete all conversation messages for a session."""
+    count = await _svc.clear_history(db, session_id)
+    return envelope({"deleted": count})

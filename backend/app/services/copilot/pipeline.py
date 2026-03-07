@@ -53,6 +53,7 @@ class CopilotPipeline:
         reranker_service: Any = None,
         library_id: str | None = None,
         schema_summary: str = "",
+        conversation_history: list[dict[str, str]] | None = None,
     ) -> AsyncGenerator[SSEEvent, None]:
         """Return an async generator that runs the full pipeline.
 
@@ -71,6 +72,7 @@ class CopilotPipeline:
                 graph retrieval when ``intent.needs_docs=True``.
             reranker_service: Optional :class:`RerankerService`.
             library_id: ID of the session-attached document library, if any.
+            conversation_history: Prior user/assistant messages for multi-turn.
         """
         return self._run(
             request=request,
@@ -83,6 +85,7 @@ class CopilotPipeline:
             reranker_service=reranker_service,
             library_id=library_id,
             schema_summary=schema_summary,
+            conversation_history=conversation_history,
         )
 
     # ------------------------------------------------------------------
@@ -101,6 +104,7 @@ class CopilotPipeline:
         reranker_service: Any = None,
         library_id: str | None = None,
         schema_summary: str = "",
+        conversation_history: list[dict[str, str]] | None = None,
     ) -> AsyncGenerator[SSEEvent, None]:
         """Top-level generator: semaphore guard + timeout wrapper."""
         # Concurrency check (non-blocking)
@@ -130,6 +134,7 @@ class CopilotPipeline:
                         reranker_service=reranker_service,
                         library_id=library_id,
                         schema_summary=schema_summary,
+                        conversation_history=conversation_history,
                     ):
                         yield event
             except TimeoutError:
@@ -156,6 +161,7 @@ class CopilotPipeline:
         reranker_service: Any = None,
         library_id: str | None = None,
         schema_summary: str = "",
+        conversation_history: list[dict[str, str]] | None = None,
     ) -> AsyncGenerator[SSEEvent, None]:
         """Core pipeline logic: route → retrieve → synthesise → maybe re-retrieve."""
         models = preset_config.models
@@ -170,6 +176,7 @@ class CopilotPipeline:
         router_tokens = budgets.get("router", 256)
         retrieval_tokens = budgets.get("graphRetrieval", 512)
         synth_tokens = budgets.get("synthesiser", 4096)
+        context_window_tokens = budgets.get("contextWindow", 128_000)
 
         doc_top_k = _GUARDRAILS.SOFT_LIMITS["doc_retrieval_top_k"]
         reranker_top_k = _GUARDRAILS.SOFT_LIMITS["reranker_top_k"]
@@ -260,6 +267,8 @@ class CopilotPipeline:
             model=synth_model,
             max_tokens=synth_tokens,
             doc_chunks=doc_chunks,
+            conversation_history=conversation_history,
+            context_window_tokens=context_window_tokens,
         ):
             first_pass.append(event)
             if event.event == "confidence" and isinstance(event.data, dict):
@@ -314,6 +323,8 @@ class CopilotPipeline:
                 model=synth_model,
                 max_tokens=synth_tokens,
                 doc_chunks=combined_docs,
+                conversation_history=conversation_history,
+                context_window_tokens=context_window_tokens,
             ):
                 yield event
         else:

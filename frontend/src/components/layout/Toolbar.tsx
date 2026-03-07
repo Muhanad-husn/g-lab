@@ -4,6 +4,14 @@ import iconDark from "@/assets/icon-dark.svg";
 import iconLight from "@/assets/icon-light.svg";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -311,17 +319,18 @@ function PresetSelector() {
   const setPreset = useStore((s) => s.setPreset);
 
   return (
-    <select
-      value={activePreset}
-      onChange={(e) => setPreset(e.target.value as PresetName)}
-      className="h-8 rounded-md border border-input bg-transparent px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-    >
-      {Object.values(PRESETS).map((p) => (
-        <option key={p.name} value={p.name}>
-          {p.label}
-        </option>
-      ))}
-    </select>
+    <Select value={activePreset} onValueChange={(v) => setPreset(v as PresetName)}>
+      <SelectTrigger className="h-8 w-[140px] text-xs">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {Object.values(PRESETS).map((p) => (
+          <SelectItem key={p.name} value={p.name} className="text-xs">
+            {p.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -458,6 +467,7 @@ const DEFAULT_PRESET_CONFIG: PresetConfig = {
     router: 500,
     graphRetrieval: 2000,
     synthesiser: 4000,
+    contextWindow: 128000,
   },
   advancedMode: false,
 };
@@ -882,7 +892,7 @@ export function Toolbar() {
 
   return (
     <>
-      <header className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-card px-3 gap-3">
+      <header className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-card px-3 gap-3 shadow-[0_1px_3px_0_rgba(0,0,0,0.3)]">
         {/* Left: brand + editable session name */}
         <div className="flex items-center gap-2 min-w-0">
           <img src={iconLight} alt="G-Lab" className="h-6 w-6 dark:hidden" />
@@ -893,101 +903,107 @@ export function Toolbar() {
           <SessionName />
         </div>
 
-        {/* Right: preset selector + actions + status */}
-        <div className="flex items-center gap-2 shrink-0">
-          <PresetSelector />
+        {/* Right: grouped actions + status */}
+        <div className="flex items-center gap-3 shrink-0">
+          {/* Group 1: Preset selector + manager */}
+          <div className="flex items-center gap-2">
+            <PresetSelector />
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => setPresetsOpen(true)}
+              title="Manage investigation presets"
+            >
+              Presets
+            </Button>
+          </div>
 
-          {/* Connect / credentials */}
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 w-8 p-0"
-            onClick={() => setCredentialsOpen(true)}
-            title="Connection settings (Neo4j + OpenRouter)"
-          >
-            <Plug className="h-3.5 w-3.5" />
-          </Button>
+          <Separator orientation="vertical" className="h-5" />
 
-          {/* Preset manager */}
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 text-xs"
-            onClick={() => setPresetsOpen(true)}
-            title="Manage investigation presets"
-          >
-            Presets
-          </Button>
+          {/* Group 2: Connect + Copilot settings */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={() => setCredentialsOpen(true)}
+              title="Connection settings (Neo4j + OpenRouter)"
+            >
+              <Plug className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant={advancedMode ? "default" : "outline"}
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={() => setSettingsOpen(true)}
+              title={advancedMode ? "Copilot settings (advanced mode on)" : "Copilot settings"}
+            >
+              <Settings className="h-3.5 w-3.5" />
+            </Button>
+          </div>
 
-          {/* Copilot settings */}
-          <Button
-            variant={advancedMode ? "default" : "outline"}
-            size="sm"
-            className="h-8 w-8 p-0"
-            onClick={() => setSettingsOpen(true)}
-            title={advancedMode ? "Copilot settings (advanced mode on)" : "Copilot settings"}
-          >
-            <Settings className="h-3.5 w-3.5" />
-          </Button>
+          <Separator orientation="vertical" className="h-5" />
 
-          {/* Export */}
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 gap-1.5 text-xs"
-            onClick={handleExport}
-            disabled={!session || exporting}
-            title={session ? "Export session" : "No active session"}
-          >
-            <Download className="h-3.5 w-3.5" />
-            {exporting ? "Exporting…" : "Export"}
-          </Button>
+          {/* Group 3: Export / Import / Clear / New Session */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-xs"
+              onClick={handleExport}
+              disabled={!session || exporting}
+              title={session ? "Export session" : "No active session"}
+            >
+              <Download className="h-3.5 w-3.5" />
+              {exporting ? "Exporting…" : "Export"}
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".g-lab-session"
+              className="hidden"
+              onChange={handleImportFile}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-xs"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={importing}
+              title="Import session"
+            >
+              <Upload className="h-3.5 w-3.5" />
+              {importing ? "Importing…" : "Import"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={() => setClearOpen(true)}
+              disabled={nodeCount === 0}
+              title="Clear canvas"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => setNewSessionOpen(true)}
+            >
+              New Session
+            </Button>
+          </div>
 
-          {/* Import (hidden file input) */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".g-lab-session"
-            className="hidden"
-            onChange={handleImportFile}
-          />
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 gap-1.5 text-xs"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={importing}
-            title="Import session"
-          >
-            <Upload className="h-3.5 w-3.5" />
-            {importing ? "Importing…" : "Import"}
-          </Button>
+          <Separator orientation="vertical" className="h-5" />
 
-          {/* Clear canvas */}
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 w-8 p-0"
-            onClick={() => setClearOpen(true)}
-            disabled={nodeCount === 0}
-            title="Clear canvas"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-
-          {/* New session */}
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 text-xs"
-            onClick={() => setNewSessionOpen(true)}
-          >
-            New Session
-          </Button>
-
-          <StatusDot />
-          <CopilotStatusDot />
-          <VectorStoreDot />
+          {/* Group 4: Status dots */}
+          <div className="flex items-center gap-3 rounded-md bg-muted/30 px-2.5 py-1">
+            <StatusDot />
+            <CopilotStatusDot />
+            <VectorStoreDot />
+          </div>
         </div>
       </header>
 

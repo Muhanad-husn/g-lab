@@ -43,6 +43,8 @@ class SynthesiserService:
         max_tokens: int = 2048,
         stream: bool = True,
         doc_chunks: list[DocumentChunk] | None = None,
+        conversation_history: list[dict[str, str]] | None = None,
+        context_window_tokens: int = 128_000,
     ) -> AsyncGenerator[SSEEvent, None]:
         """Return an async generator that yields typed SSE events.
 
@@ -57,6 +59,8 @@ class SynthesiserService:
             max_tokens: Token budget for the answer.
             stream: Reserved; streaming is always used.
             doc_chunks: Optional document chunks from vector search + reranking.
+            conversation_history: Prior user/assistant message pairs.
+            context_window_tokens: Model context window size for budget calc.
 
         Returns:
             Async generator yielding :class:`SSEEvent` objects in order:
@@ -72,6 +76,8 @@ class SynthesiserService:
             temperature=temperature,
             max_tokens=max_tokens,
             doc_chunks=doc_chunks or [],
+            conversation_history=conversation_history,
+            context_window_tokens=context_window_tokens,
         )
 
     async def _stream(
@@ -83,17 +89,50 @@ class SynthesiserService:
         temperature: float,
         max_tokens: int,
         doc_chunks: list[DocumentChunk] | None = None,
+        conversation_history: list[dict[str, str]] | None = None,
+        context_window_tokens: int = 128_000,
     ) -> AsyncGenerator[SSEEvent, None]:
         """Internal async generator — yields typed SSE events."""
+        # Build conversation history text for the prompt
+        history_text = "(no prior conversation)"
+        trimmed_history: list[dict[str, str]] = []
+        was_trimmed = False
+        messages_total = 0
+
+        if conversation_history:
+            messages_total = len(conversation_history)
+            budget_tokens = int(context_window_tokens * 0.75)
+            trimmed_history, was_trimmed, _included, _ = _trim_history(
+                conversation_history, budget_tokens
+            )
+            if trimmed_history:
+                lines: list[str] = []
+                for msg in trimmed_history:
+                    role_label = "User" if msg["role"] == "user" else "Assistant"
+                    lines.append(f"{role_label}: {msg['content']}")
+                history_text = "\n\n".join(lines)
+
         system_prompt = SYNTHESISER_SYSTEM_PROMPT.format(
             graph_results=_format_graph_results(graph_results),
             doc_context=_format_doc_chunks(doc_chunks or []),
+            conversation_history=history_text,
             query=query,
         )
         if graph_context:
             system_prompt = f"Graph context:\n{graph_context}\n\n{system_prompt}"
 
-        messages = [
+        # Emit context_warning before synthesis if history was trimmed
+        if was_trimmed:
+            included = len(trimmed_history)
+            yield SSEEvent(
+                event="context_warning",
+                data={
+                    "messages_included": included,
+                    "messages_total": messages_total,
+                },
+            )
+
+        messages: list[dict[str, str]] = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": query},
         ]
@@ -136,6 +175,55 @@ class SynthesiserService:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _estimate_tokens(text: str) -> int:
+    """Estimate token count from text length (~4 chars per token)."""
+    return len(text) // 4
+
+
+def _trim_history(
+    messages: list[dict[str, str]],
+    budget_tokens: int,
+) -> tuple[list[dict[str, str]], bool, int, int]:
+    """Trim conversation history to fit within a token budget.
+
+    Walks backwards through messages, keeping complete user/assistant pairs
+    that fit within the budget.
+
+    Returns:
+        (trimmed_messages, was_trimmed, messages_included, messages_total)
+    """
+    total = len(messages)
+    if not messages:
+        return [], False, 0, 0
+
+    used = 0
+    keep_from = total  # index to slice from
+
+    # Walk backwards, keeping complete pairs
+    i = total - 1
+    while i >= 0:
+        msg_tokens = _estimate_tokens(messages[i]["content"])
+        # Try to keep pairs: if this is an assistant msg, also grab the user msg before it
+        if i > 0 and messages[i]["role"] == "assistant" and messages[i - 1]["role"] == "user":
+            pair_tokens = msg_tokens + _estimate_tokens(messages[i - 1]["content"])
+            if used + pair_tokens > budget_tokens:
+                break
+            used += pair_tokens
+            keep_from = i - 1
+            i -= 2
+        else:
+            if used + msg_tokens > budget_tokens:
+                break
+            used += msg_tokens
+            keep_from = i
+            i -= 1
+
+    trimmed = messages[keep_from:]
+    included = len(trimmed)
+    was_trimmed = included < total
+    return trimmed, was_trimmed, included, total
 
 
 def _format_doc_chunks(chunks: list[DocumentChunk]) -> str:

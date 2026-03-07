@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Bookmark } from "lucide-react";
+import { Bookmark, Bot, MessageSquarePlus } from "lucide-react";
 import { useStore } from "@/store";
 import { useSSE } from "@/hooks/useSSE";
 import { useReadOnlyMode } from "@/hooks/useReadOnlyMode";
+import { PanelHeader } from "@/components/shared/PanelHeader";
 import { ConfidenceBadge } from "./ConfidenceBadge";
 import { API_BASE } from "@/lib/constants";
 import { createFinding } from "@/api/findings";
+import { clearHistory } from "@/api/copilot";
 import type { CopilotMessage } from "@/lib/types";
 
 // ─── Pipeline status indicator ─────────────────────────────────────────────────
@@ -36,7 +38,7 @@ function CypherBadge({ cypher }: { cypher: string }) {
   const toggle = useCallback(() => setOpen((v) => !v), []);
 
   return (
-    <div className="px-3 py-1 border-b border-border bg-muted/20">
+    <div className="px-3 py-1 border-b border-border bg-muted/40 border-l-2 border-l-primary/30">
       <button
         className="flex items-center gap-1.5 text-[10px] text-muted-foreground hover:text-foreground"
         onClick={toggle}
@@ -67,7 +69,7 @@ function ToolBadge({
   const toggle = useCallback(() => setOpen((v) => !v), []);
 
   return (
-    <div className="px-3 py-1 border-b border-border bg-muted/20">
+    <div className="px-3 py-1 border-b border-border bg-muted/40 border-l-2 border-l-primary/30">
       <button
         className="flex items-center gap-1.5 text-[10px] text-muted-foreground hover:text-foreground"
         onClick={toggle}
@@ -123,8 +125,8 @@ function MessageBubble({ message }: MessageBubbleProps) {
   }
 
   return (
-    <div className={`flex flex-col gap-0.5 px-3 py-2 ${isAssistant ? "" : "items-end"}`}>
-      <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide">
+    <div className={`flex flex-col gap-1 px-3 py-2 ${isAssistant ? "" : "items-end"}`}>
+      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
         {isAssistant ? "Copilot" : "You"}
       </span>
       <div
@@ -166,13 +168,32 @@ function MessageBubble({ message }: MessageBubbleProps) {
 
 function StreamingBubble({ content }: { content: string }) {
   return (
-    <div className="flex flex-col gap-0.5 px-3 py-2">
-      <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide">
+    <div className="flex flex-col gap-1 px-3 py-2">
+      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
         Copilot
       </span>
       <div className="text-xs leading-relaxed whitespace-pre-wrap rounded px-2 py-1.5 bg-muted text-foreground self-start max-w-[90%]">
         {content || <span className="animate-pulse">▋</span>}
       </div>
+    </div>
+  );
+}
+
+// ─── Context warning banner ─────────────────────────────────────────────────
+
+function ContextWarningBanner({ onNewChat }: { onNewChat: () => void }) {
+  return (
+    <div className="px-3 py-1.5 text-[10px] text-amber-600 dark:text-amber-400 bg-amber-500/10 border-b border-border flex items-center gap-1.5">
+      <span>
+        Older messages excluded from AI context.{" "}
+        <button
+          className="underline hover:text-foreground"
+          onClick={onNewChat}
+        >
+          Start a new chat
+        </button>{" "}
+        for best results.
+      </span>
     </div>
   );
 }
@@ -206,6 +227,9 @@ export function CopilotPanel() {
   const finishStream = useStore((s) => s.finishStream);
   const addMessage = useStore((s) => s.addMessage);
   const snapshotCanvas = useStore((s) => s.snapshotCanvas);
+  const contextTrimmed = useStore((s) => s.contextTrimmed);
+  const setContextTrimmed = useStore((s) => s.setContextTrimmed);
+  const clearConversation = useStore((s) => s.clearConversation);
 
   // Auto-scroll to bottom when messages or streaming content change
   useEffect(() => {
@@ -216,6 +240,16 @@ export function CopilotPanel() {
   }, [messages, streamingContent]);
 
   const disabled = isStreaming || isReadOnly || !sessionId;
+
+  async function handleNewChat() {
+    if (!sessionId) return;
+    try {
+      await clearHistory(sessionId);
+    } catch {
+      // Best-effort — clear local state regardless
+    }
+    clearConversation();
+  }
 
   async function handleSubmit() {
     const text = query.trim();
@@ -261,6 +295,7 @@ export function CopilotPanel() {
           onConfidence: (score) => setConfidence(score),
           onToolUsed: (data) => setToolUsed(data),
           onStatus: ({ stage }) => setStatus(stage),
+          onContextWarning: () => setContextTrimmed(true),
           onDone: () => finishStream(sessionId!),
           onError: (err) => {
             finishStream(sessionId!);
@@ -296,17 +331,26 @@ export function CopilotPanel() {
   return (
     <div className="flex flex-col h-full bg-card">
       {/* Header */}
-      <div className="h-8 flex items-center px-3 border-b border-border shrink-0">
-        <span className="text-xs font-semibold text-foreground">Copilot</span>
+      <PanelHeader title="Copilot">
         {isReadOnly && (
-          <span className="ml-2 text-[10px] text-muted-foreground">(offline)</span>
+          <span className="text-[10px] text-muted-foreground">(offline)</span>
         )}
         {!sessionId && (
-          <span className="ml-2 text-[10px] text-muted-foreground">(no session)</span>
+          <span className="text-[10px] text-muted-foreground">(no session)</span>
+        )}
+        {messages.length > 0 && !isStreaming && (
+          <button
+            className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1"
+            onClick={() => void handleNewChat()}
+            title="Start a new conversation"
+          >
+            <MessageSquarePlus className="h-3 w-3" />
+            New Chat
+          </button>
         )}
         {canvasSnapshot && !isStreaming && (
           <button
-            className="ml-auto text-[10px] text-muted-foreground hover:text-foreground"
+            className="text-[10px] text-muted-foreground hover:text-foreground"
             onClick={revertToSnapshot}
           >
             Undo canvas change
@@ -314,13 +358,13 @@ export function CopilotPanel() {
         )}
         {isStreaming && (
           <button
-            className="ml-auto text-[10px] text-muted-foreground hover:text-foreground"
+            className="text-[10px] text-muted-foreground hover:text-foreground"
             onClick={stopSSE}
           >
             Stop
           </button>
         )}
-      </div>
+      </PanelHeader>
 
       {/* Pipeline status */}
       <StatusDot status={pipelineStatus} />
@@ -331,11 +375,18 @@ export function CopilotPanel() {
           <ToolBadge tool={toolUsed.tool} params={toolUsed.params} />
         ))}
 
+      {/* Context window warning */}
+      {contextTrimmed && !isStreaming && (
+        <ContextWarningBanner onNewChat={() => void handleNewChat()} />
+      )}
+
       {/* Message list */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
         {messages.length === 0 && !isStreaming && (
-          <div className="flex items-center justify-center h-20 text-xs text-muted-foreground">
-            Ask Copilot a question about your graph.
+          <div className="flex flex-col items-center justify-center h-32 text-muted-foreground gap-2 px-6 text-center">
+            <Bot className="h-6 w-6 opacity-30" />
+            <span className="text-xs">Ask Copilot a question about your graph</span>
+            <span className="text-[10px] opacity-60">Use natural language to explore nodes, relationships, and patterns</span>
           </div>
         )}
         {messages.map((msg) => (

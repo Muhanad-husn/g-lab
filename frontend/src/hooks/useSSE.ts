@@ -17,6 +17,10 @@ export interface SSEHandlers {
   onToolUsed?: (
     data: { cypher: string } | { tool: string; params: Record<string, unknown> },
   ) => void;
+  onContextWarning?: (data: {
+    messages_included: number;
+    messages_total: number;
+  }) => void;
   onDone?: () => void;
   onError?: (data: { code: string; message: string }) => void;
 }
@@ -60,6 +64,11 @@ function dispatchEvent(
         parsed as
           | { cypher: string }
           | { tool: string; params: Record<string, unknown> },
+      );
+      break;
+    case "context_warning":
+      handlers.onContextWarning?.(
+        parsed as { messages_included: number; messages_total: number },
       );
       break;
     case "done":

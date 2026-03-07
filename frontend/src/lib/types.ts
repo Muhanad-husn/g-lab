@@ -200,6 +200,7 @@ export interface PresetConfig {
     router: number;
     graphRetrieval: number;
     synthesiser: number;
+    contextWindow?: number;
   };
   advancedMode: boolean;
 }
