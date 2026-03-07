@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Camera, FileText, Plus } from "lucide-react";
+import { Camera, ChevronDown, ChevronRight, Download, FileText, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -12,12 +12,77 @@ import {
 } from "@/components/ui/dialog";
 import { createFinding } from "@/api/findings";
 import { useStore } from "@/store";
+import { PanelHeader } from "@/components/shared/PanelHeader";
 import { captureCanvasSnapshot, dataUrlToBase64 } from "@/lib/cytoscapeRef";
-import type { FindingResponse } from "@/lib/types";
+import type { EvidenceSource, FindingResponse } from "@/lib/types";
+
+// ─── Export helper ────────────────────────────────────────────────────────────
+
+function buildFindingMarkdown(
+  finding: FindingResponse,
+  evidence: EvidenceSource[],
+): string {
+  const lines: string[] = [];
+  lines.push(`# ${finding.title}`);
+  lines.push("");
+  lines.push(
+    `_Created: ${new Date(finding.created_at).toLocaleString()}_`,
+  );
+  lines.push("");
+
+  if (finding.body) {
+    lines.push(finding.body);
+    lines.push("");
+  }
+
+  if (evidence.length > 0) {
+    lines.push("---");
+    lines.push("");
+    lines.push("## Evidence");
+    lines.push("");
+    for (const src of evidence) {
+      if (src.type === "graph_path") {
+        lines.push(`### Graph path: \`${src.id}\``);
+      } else {
+        const label = [
+          src.filename,
+          src.page_number != null ? `p.${src.page_number}` : null,
+          src.section_heading,
+        ]
+          .filter(Boolean)
+          .join(" — ");
+        lines.push(`### Doc: ${label || src.id}`);
+      }
+      lines.push("");
+      lines.push(src.content);
+      lines.push("");
+    }
+  }
+
+  return lines.join("\n");
+}
+
+function downloadMarkdown(filename: string, content: string) {
+  const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 // ─── Finding card ─────────────────────────────────────────────────────────────
 
-function FindingCard({ finding }: { finding: FindingResponse }) {
+function FindingCard({
+  finding,
+  evidence,
+}: {
+  finding: FindingResponse;
+  evidence: EvidenceSource[];
+}) {
+  const [expanded, setExpanded] = useState(false);
+
   const date = new Date(finding.created_at).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
@@ -30,27 +95,70 @@ function FindingCard({ finding }: { finding: FindingResponse }) {
       : finding.body
     : null;
 
+  function handleExport() {
+    const md = buildFindingMarkdown(finding, evidence);
+    const safeName = finding.title
+      .replace(/[^a-zA-Z0-9_ -]/g, "")
+      .replace(/\s+/g, "_")
+      .slice(0, 60);
+    downloadMarkdown(`${safeName || "finding"}.md`, md);
+  }
+
+  const Chevron = expanded ? ChevronDown : ChevronRight;
+
   return (
-    <div className="px-3 py-2.5 border-b border-border last:border-0 hover:bg-accent/30 transition-colors">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <FileText className="h-3 w-3 shrink-0 text-primary/60" />
-          <span className="text-xs font-semibold text-foreground truncate">
-            {finding.title}
+    <div className="border-b border-border last:border-0">
+      <button
+        type="button"
+        className="w-full px-3 py-2 text-left hover:bg-accent/30 transition-colors"
+        onClick={() => setExpanded((v) => !v)}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Chevron className="h-3 w-3 shrink-0 text-muted-foreground" />
+            <FileText className="h-3 w-3 shrink-0 text-primary/60" />
+            <span className="text-xs font-semibold text-foreground truncate">
+              {finding.title}
+            </span>
+            {finding.has_snapshot && (
+              <Camera
+                className="h-3 w-3 shrink-0 text-blue-400"
+                aria-label="Has canvas snapshot"
+              />
+            )}
+          </div>
+          <span className="text-[10px] text-muted-foreground shrink-0">
+            {date}
           </span>
-          {finding.has_snapshot && (
-            <Camera
-              className="h-3 w-3 shrink-0 text-blue-400"
-              aria-label="Has canvas snapshot"
-            />
-          )}
         </div>
-        <span className="text-[10px] text-muted-foreground shrink-0">{date}</span>
-      </div>
-      {bodyText && (
-        <p className="mt-1 text-[11px] text-muted-foreground/70 line-clamp-2 pl-[18px] leading-relaxed">
-          {bodyText}
-        </p>
+        {!expanded && bodyText && (
+          <p className="mt-1 text-[11px] text-muted-foreground/70 line-clamp-2 pl-[18px] leading-relaxed">
+            {bodyText}
+          </p>
+        )}
+      </button>
+
+      {expanded && (
+        <div className="px-3 pb-2 pl-[30px]">
+          {bodyText && (
+            <p className="text-[11px] text-muted-foreground/80 leading-relaxed whitespace-pre-wrap mb-2">
+              {bodyText}
+            </p>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-[10px] gap-1 text-muted-foreground hover:text-foreground"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleExport();
+            }}
+            title="Export finding as Markdown"
+          >
+            <Download className="h-3 w-3" />
+            Export .md
+          </Button>
+        </div>
       )}
     </div>
   );
@@ -224,15 +332,13 @@ function AddFindingDialog({ open, onClose, sessionId }: AddFindingDialogProps) {
 export function FindingsPanel() {
   const session = useStore((s) => s.session);
   const findings = useStore((s) => s.findings);
+  const evidence = useStore((s) => s.evidence);
   const [dialogOpen, setDialogOpen] = useState(false);
 
   return (
     <div className="flex flex-col h-full">
       {/* Header row */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-          {findings.length} finding{findings.length !== 1 ? "s" : ""}
-        </span>
+      <PanelHeader title={`${findings.length} finding${findings.length !== 1 ? "s" : ""}`}>
         <Button
           variant="ghost"
           size="sm"
@@ -244,7 +350,7 @@ export function FindingsPanel() {
           <Plus className="h-3 w-3" />
           Add
         </Button>
-      </div>
+      </PanelHeader>
 
       {/* List */}
       <ScrollArea className="flex-1">
@@ -261,7 +367,9 @@ export function FindingsPanel() {
             )}
           </div>
         ) : (
-          findings.map((f) => <FindingCard key={f.id} finding={f} />)
+          findings.map((f) => (
+            <FindingCard key={f.id} finding={f} evidence={evidence} />
+          ))
         )}
       </ScrollArea>
 
