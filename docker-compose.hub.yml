@@ -1,0 +1,62 @@
+# docker-compose.hub.yml — Run G-Lab from pre-built Docker Hub images
+# No need to clone the repo. Just download this file and run:
+#   docker compose -f docker-compose.hub.yml up
+
+services:
+  chromadb:
+    image: chromadb/chroma:0.6.3
+    ports:
+      - "127.0.0.1:8100:8000"
+    volumes:
+      - chroma-data:/chroma/chroma
+    restart: unless-stopped
+
+  backend:
+    image: muhanaddocker/g_lab-backend:latest
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - glab-data:/data
+    environment:
+      - NEO4J_URI=${NEO4J_URI:-bolt://host.docker.internal:7687}
+      - NEO4J_USER=${NEO4J_USER:-neo4j}
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD:-password}
+      - GLAB_DATA_DIR=/data
+      - GLAB_LOG_LEVEL=${GLAB_LOG_LEVEL:-INFO}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      - CHROMA_HOST=${CHROMA_HOST:-chromadb}
+      - CHROMA_PORT=${CHROMA_PORT:-8000}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-all-MiniLM-L6-v2}
+    depends_on:
+      - chromadb
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - "CMD"
+        - "python"
+        - "-c"
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  frontend:
+    image: muhanaddocker/g_lab-frontend:latest
+    ports:
+      - "127.0.0.1:5173:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  glab-data:
+  chroma-data:

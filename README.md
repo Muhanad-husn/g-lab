@@ -56,7 +56,40 @@ No cloud accounts. No telemetry. No credentials leaving your machine. Just you, 
 
 ---
 
-## Quick Start
+## Quick Start (Docker Hub)
+
+The fastest way to get G-Lab running — no cloning required. Pre-built images are available on Docker Hub.
+
+```bash
+# 1. Download the compose file
+curl -O https://raw.githubusercontent.com/muhanaddocker/g-lab/master/docker-compose.hub.yml
+
+# 2. Create a .env file with your Neo4j credentials
+cat > .env << EOF
+NEO4J_URI=bolt://host.docker.internal:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=your-password-here
+# Optional: uncomment to enable AI Copilot
+# OPENROUTER_API_KEY=sk-or-...
+EOF
+
+# 3. Run
+docker compose -f docker-compose.hub.yml up
+```
+
+That's it. Open **http://localhost:5173** and start investigating.
+
+| Service  | URL                    | Image |
+| -------- | ---------------------- | ----- |
+| Frontend | http://localhost:5173  | `muhanaddocker/g_lab-frontend` |
+| Backend  | http://localhost:8000  | `muhanaddocker/g_lab-backend`  |
+| ChromaDB | http://localhost:8100  | `chromadb/chroma:0.6.3` |
+
+---
+
+## Quick Start (From Source)
+
+For development or if you want to build the images yourself:
 
 ```bash
 # 1. Clone the repo
@@ -66,7 +99,7 @@ git clone <repo-url> g-lab && cd g-lab
 cp .env.example .env
 # Edit .env: set NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
 
-# 3. Run
+# 3. Run (builds images locally)
 docker compose up
 ```
 
