@@ -57,39 +57,45 @@ function SampleTable({ rows, isRelType = false, onSearchName }: SampleTableProps
                 {col}
               </th>
             ))}
-            {!isRelType && onSearchName && (
-              <th className="w-6 border-b border-border" />
-            )}
           </tr>
         </thead>
         <tbody>
-          {pageRows.map((row, i) => (
-            <tr key={i} className="hover:bg-accent/30">
-              {columns.map((col) => (
-                <td
-                  key={col}
-                  className="px-2 py-1 text-foreground max-w-[120px] truncate"
-                >
-                  {row[col] === null ? (
-                    <span className="italic text-muted-foreground">null</span>
-                  ) : (
-                    String(row[col])
-                  )}
-                </td>
-              ))}
-              {!isRelType && onSearchName && (
-                <td className="px-1 py-1">
-                  <button
-                    title={`Search for ${String(row.name ?? "")}`}
-                    className="p-0.5 rounded hover:bg-primary/20 text-muted-foreground hover:text-primary"
-                    onClick={() => onSearchName(String(row.name ?? ""))}
+          {pageRows.map((row, i) => {
+            const isFirstCol = !isRelType && onSearchName;
+            return (
+              <tr key={i} className="hover:bg-accent/30">
+                {columns.map((col, colIdx) => (
+                  <td
+                    key={col}
+                    className="px-2 py-1 text-foreground max-w-[120px] truncate"
                   >
-                    <Search className="h-3 w-3" />
-                  </button>
-                </td>
-              )}
-            </tr>
-          ))}
+                    {colIdx === 0 && isFirstCol ? (
+                      <span className="inline-flex items-center gap-1">
+                        <span className="truncate">
+                          {row[col] === null ? (
+                            <span className="italic text-muted-foreground">null</span>
+                          ) : (
+                            String(row[col])
+                          )}
+                        </span>
+                        <button
+                          title={`Search for ${String(row[col] ?? "")}`}
+                          className="p-0.5 rounded hover:bg-primary/20 text-muted-foreground hover:text-primary shrink-0"
+                          onClick={() => onSearchName(String(row[col] ?? ""))}
+                        >
+                          <Search className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ) : row[col] === null ? (
+                      <span className="italic text-muted-foreground">null</span>
+                    ) : (
+                      String(row[col])
+                    )}
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
 
@@ -248,8 +254,17 @@ function CentralNodesSection({ nodes }: { nodes: CentralNode[] }) {
             key={n.id}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs"
           >
-            <span className="flex-1 text-foreground font-mono truncate">
-              {displayName}
+            <span className="flex-1 flex items-center gap-1 min-w-0">
+              <span className="text-foreground font-mono truncate">
+                {displayName}
+              </span>
+              <button
+                title={`Search for ${displayName}`}
+                className="p-0.5 rounded hover:bg-primary/20 text-muted-foreground hover:text-primary shrink-0"
+                onClick={() => handleSearch(displayName)}
+              >
+                <Search className="h-3 w-3" />
+              </button>
             </span>
             <span className="text-[10px] text-muted-foreground shrink-0">
               {n.labels.join(", ")}
@@ -257,13 +272,6 @@ function CentralNodesSection({ nodes }: { nodes: CentralNode[] }) {
             <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
               {n.degree}
             </span>
-            <button
-              title={`Search for ${displayName}`}
-              className="p-0.5 rounded hover:bg-primary/20 text-muted-foreground hover:text-primary"
-              onClick={() => handleSearch(displayName)}
-            >
-              <Search className="h-3 w-3" />
-            </button>
           </div>
         );
       })}
