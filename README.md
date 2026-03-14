@@ -14,6 +14,25 @@ No cloud accounts. No telemetry. No credentials leaving your machine. Just you, 
 
 ---
 
+## Contenents
+
+- [Who It's For](#who-its-for)
+- [What Makes G-Lab Different](#what-makes-g-lab-different)
+- [Tech Stack](#tech-stack)
+- [Prerequisites](#prerequisites)
+- [Quick Start (Docker Hub)](#quick-start-docker-hub)
+- [Quick Start (From Source)](#quick-start-from-source)
+- [Development](#development)
+- [Architecture](#architecture)
+- [AI Copilot (Phase 2)](#ai-copilot-phase-2)
+- [Document Library (Phase 3)](#document-library-phase-3)
+- [Built With](#built-with)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
 ## Who It's For
 
 - **Data journalists** tracing ownership chains, mapping influence networks, and corroborating sources against leaked documents — on deadline.
