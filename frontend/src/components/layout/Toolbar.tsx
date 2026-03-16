@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Download, Pencil, Plug, Settings, Trash2, Upload } from "lucide-react";
+import { ChevronDown, Download, Image, Pencil, Plug, Settings, Table, Trash2, Upload } from "lucide-react";
 import iconDark from "@/assets/icon-dark.svg";
 import iconLight from "@/assets/icon-light.svg";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { createSession, exportSession, importSession, updateSession } from "@/api/sessions";
 import {
   createPreset,
@@ -31,7 +37,8 @@ import {
 } from "@/api/credentials";
 import { useStore } from "@/store";
 import { PRESETS, type PresetName } from "@/lib/constants";
-import type { PresetConfig, PresetResponse } from "@/lib/types";
+import type { GraphEdge, GraphNode, PresetConfig, PresetResponse } from "@/lib/types";
+import { captureCanvasSnapshot } from "@/lib/cytoscapeRef";
 
 // ─── Neo4j status indicator ───────────────────────────────────────────────────
 
@@ -817,6 +824,85 @@ function NewSessionDialog({ open, onClose }: NewSessionDialogProps) {
   );
 }
 
+// ─── Canvas export helpers ────────────────────────────────────────────────────
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportCanvasPng(sessionName: string): boolean {
+  const dataUrl = captureCanvasSnapshot();
+  if (!dataUrl) return false;
+  const byteString = atob(dataUrl.split(",")[1]);
+  const mimeString = dataUrl.split(",")[0].split(":")[1].split(";")[0];
+  const ab = new ArrayBuffer(byteString.length);
+  const ia = new Uint8Array(ab);
+  for (let i = 0; i < byteString.length; i++) {
+    ia[i] = byteString.charCodeAt(i);
+  }
+  const blob = new Blob([ab], { type: mimeString });
+  const safeName = sessionName.replace(/[^a-z0-9_-]/gi, "_");
+  downloadBlob(blob, `${safeName}_canvas.png`);
+  return true;
+}
+
+function escapeCsvField(value: string): string {
+  if (value.includes(",") || value.includes('"') || value.includes("\n")) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+function exportCanvasCsv(
+  nodes: GraphNode[],
+  edges: GraphEdge[],
+  sessionName: string,
+): boolean {
+  if (nodes.length === 0) return false;
+
+  const lines: string[] = [];
+
+  // Nodes sheet
+  lines.push("# Nodes");
+  lines.push("id,labels,properties");
+  for (const node of nodes) {
+    lines.push(
+      [
+        escapeCsvField(node.id),
+        escapeCsvField(node.labels.join(";")),
+        escapeCsvField(JSON.stringify(node.properties)),
+      ].join(","),
+    );
+  }
+
+  lines.push("");
+
+  // Edges sheet
+  lines.push("# Edges");
+  lines.push("id,type,source,target,properties");
+  for (const edge of edges) {
+    lines.push(
+      [
+        escapeCsvField(edge.id),
+        escapeCsvField(edge.type),
+        escapeCsvField(edge.source),
+        escapeCsvField(edge.target),
+        escapeCsvField(JSON.stringify(edge.properties)),
+      ].join(","),
+    );
+  }
+
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const safeName = sessionName.replace(/[^a-z0-9_-]/gi, "_");
+  downloadBlob(blob, `${safeName}_canvas.csv`);
+  return true;
+}
+
 // ─── Toolbar ──────────────────────────────────────────────────────────────────
 
 export function Toolbar() {
@@ -947,17 +1033,68 @@ export function Toolbar() {
 
           {/* Group 3: Export / Import / Clear / New Session */}
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1.5 text-xs"
-              onClick={handleExport}
-              disabled={!session || exporting}
-              title={session ? "Export session" : "No active session"}
-            >
-              <Download className="h-3.5 w-3.5" />
-              {exporting ? "Exporting…" : "Export"}
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5 text-xs"
+                  disabled={!session || exporting}
+                  title={session ? "Export options" : "No active session"}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  {exporting ? "Exporting…" : "Export"}
+                  <ChevronDown className="h-3 w-3 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => void handleExport()}
+                  disabled={exporting}
+                >
+                  <Download className="h-3.5 w-3.5 mr-2" />
+                  Session (.g-lab-session)
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (!session) return;
+                    const ok = exportCanvasPng(session.name);
+                    if (!ok)
+                      addToast({
+                        level: "error",
+                        title: "PNG export failed",
+                        message: "Canvas is empty or not mounted.",
+                        duration: 4000,
+                      });
+                  }}
+                  disabled={nodeCount === 0}
+                >
+                  <Image className="h-3.5 w-3.5 mr-2" />
+                  Canvas as PNG
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (!session) return;
+                    const ok = exportCanvasCsv(
+                      useStore.getState().nodes,
+                      useStore.getState().edges,
+                      session.name,
+                    );
+                    if (!ok)
+                      addToast({
+                        level: "error",
+                        title: "CSV export failed",
+                        message: "Canvas is empty.",
+                        duration: 4000,
+                      });
+                  }}
+                  disabled={nodeCount === 0}
+                >
+                  <Table className="h-3.5 w-3.5 mr-2" />
+                  Canvas as CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <input
               ref={fileInputRef}
               type="file"
