@@ -18,11 +18,7 @@ from app.services.documents.parsers.base import ParseResult, Section
 
 logger: Any = get_logger(__name__)
 
-_SUPPORTED_MIME_TYPES = {
-    "application/pdf",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/msword",
-}
+_SUPPORTED_MIME_TYPES: set[str] = set()  # No restriction — Docling auto-detects format
 
 # Docling item label strings → heading
 _HEADING_LABELS = {"section_header", "title"}
@@ -50,7 +46,9 @@ class ParseError(Exception):
 class DoclingParser:
     """Tier-1 structured document parser backed by the ``docling`` library.
 
-    Supported formats: PDF, DOCX.  Docling items are grouped into
+    Supported formats: PDF, DOCX, PPTX, HTML, Markdown, AsciiDoc, CSV,
+    images, and others — Docling auto-detects from the file.  Items are
+    grouped into
     :class:`~app.services.documents.parsers.base.Section` objects: each
     heading element starts a new section; content elements are accumulated
     under the current section.
@@ -68,21 +66,14 @@ class DoclingParser:
 
         Args:
             file_path: Absolute path to the document file.
-            mime_type: MIME type of the file (used to validate support).
+            mime_type: MIME type of the file (for logging; format is auto-detected).
 
         Returns:
             :class:`ParseResult` with ``parse_tier="high"``.
 
         Raises:
-            ValueError:   If *mime_type* is not supported.
             ParseError:   If extraction fails (import error, corrupt file, …).
         """
-        if mime_type not in _SUPPORTED_MIME_TYPES:
-            raise ValueError(
-                f"Unsupported MIME type for DoclingParser: {mime_type!r}. "
-                f"Supported: {sorted(_SUPPORTED_MIME_TYPES)}"
-            )
-
         try:
             from docling.document_converter import DocumentConverter
         except ImportError as exc:

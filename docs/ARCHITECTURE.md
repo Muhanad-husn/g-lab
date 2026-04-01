@@ -636,13 +636,14 @@ Defaults are resolved at startup from a hardcoded fallback table. The model regi
 Documents are processed through a tiered pipeline. Each tier is attempted in order; the first successful parse wins.
 
 ```
-Upload (PDF or DOCX)
+Upload (any supported format)
   │
   ▼
 ┌─────────────────────────────┐
 │ Tier 1: Docling             │
 │ (structural extraction)     │──── success → High quality
 │                             │
+│ Auto-detects format.        │
 │ Extracts: headings, tables, │
 │ lists, reading order        │
 └──────────┬──────────────────┘
@@ -652,6 +653,7 @@ Upload (PDF or DOCX)
 │ Tier 2: Unstructured        │
 │ (partition + categorize)    │──── success → Standard quality
 │                             │
+│ Auto-detects format.        │
 │ Extracts: text blocks with  │
 │ basic element types         │
 └──────────┬──────────────────┘
@@ -661,9 +663,15 @@ Upload (PDF or DOCX)
 │ Tier 3: Raw fallback        │
 │ (plain text extraction)     │──── success → Basic quality
 │                             │
-│ PyPDF2 / python-docx        │
-│ Plain text, no structure    │
+│ PyPDF2 (PDF), python-docx   │
+│ (DOCX), UTF-8 read (other) │
 └─────────────────────────────┘
+
+Supported file types: PDF, DOCX, DOC, PPTX, PPT, XLSX, XLS, ODT, ODP, ODS,
+RTF, EPUB, TXT, Markdown, RST, Org, AsciiDoc, HTML, XML, JSON, CSV, TSV,
+EML, MSG. The tiered parsers auto-detect format from file content and
+extension — not all tiers support every format, but the cascade ensures
+best-effort extraction for any supported type.
 ```
 
 ### 8.2 Chunking

@@ -9,7 +9,15 @@ import hashlib
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    UploadFile,
+)
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import Response
@@ -51,6 +59,47 @@ def _uploads_dir(library_id: str) -> Path:
     d = settings.GLAB_DATA_DIR / "uploads" / library_id
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+
+# Common extension → MIME type mapping.  Unknown extensions fall back to
+# ``application/octet-stream`` which the parsers handle via auto-detection.
+_MIME_MAP: dict[str, str] = {
+    # Documents
+    ".pdf": "application/pdf",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".doc": "application/msword",
+    ".pptx": (
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    ),
+    ".ppt": "application/vnd.ms-powerpoint",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".xls": "application/vnd.ms-excel",
+    ".odt": "application/vnd.oasis.opendocument.text",
+    ".odp": "application/vnd.oasis.opendocument.presentation",
+    ".ods": "application/vnd.oasis.opendocument.spreadsheet",
+    ".rtf": "application/rtf",
+    ".epub": "application/epub+zip",
+    # Plain text / markup
+    ".txt": "text/plain",
+    ".md": "text/markdown",
+    ".rst": "text/x-rst",
+    ".org": "text/x-org",
+    ".adoc": "text/asciidoc",
+    ".html": "text/html",
+    ".htm": "text/html",
+    ".xml": "application/xml",
+    ".json": "application/json",
+    ".csv": "text/csv",
+    ".tsv": "text/tab-separated-values",
+    # Email
+    ".eml": "message/rfc822",
+    ".msg": "application/vnd.ms-outlook",
+}
+
+
+def _ext_to_mime(ext: str) -> str:
+    """Map a file extension to its MIME type, or ``application/octet-stream``."""
+    return _MIME_MAP.get(ext.lower(), "application/octet-stream")
 
 
 # ---------------------------------------------------------------------------
@@ -275,11 +324,7 @@ async def ingest_document(
         )
 
     # Determine MIME type from extension
-    mime_map = {
-        ".pdf": "application/pdf",
-        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    }
-    mime_type = mime_map.get(ext.lower(), "application/octet-stream")
+    mime_type = _ext_to_mime(ext)
 
     # Run ingestion
     ingestion_svc = IngestionService(

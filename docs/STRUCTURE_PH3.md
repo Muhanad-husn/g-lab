@@ -78,7 +78,7 @@ Stage 15: Document Retrieval           │
 **Files:**
 
 1. `backend/app/services/documents/parsers/base.py` — `ParseResult` and `Section` dataclasses
-2. `backend/app/services/documents/parsers/raw_parser.py` — Tier 3: PyPDF2 (PDF) + python-docx (DOCX). Plain text, no structure. `parse_tier="basic"`.
+2. `backend/app/services/documents/parsers/raw_parser.py` — Tier 3: PyPDF2 (PDF) + python-docx (DOCX) + UTF-8 text fallback (other). `parse_tier="basic"`.
 3. `backend/app/services/documents/parsers/unstructured_parser.py` — Tier 2: `unstructured` library partition. Text blocks with element types. `parse_tier="standard"`.
 4. `backend/app/services/documents/parsers/docling_parser.py` — Tier 1: `docling` structural extraction. Headings, tables, lists, reading order. `parse_tier="high"`.
 5. `backend/app/services/documents/chunking.py` — Recursive character splitting: 512 tokens, 64 overlap. Paragraph → sentence → word boundary. Metadata preserved per chunk.
@@ -139,7 +139,7 @@ Stage 15: Document Retrieval           │
 
 **Test:** `documentSlice.test.ts` (slice lifecycle), `DocumentLibraryPanel.test.tsx` (renders, create, delete, attach).
 
-**Acceptance:** Documents tab in Navigator. Upload PDFs/DOCX. Attach library to session. Vector store indicator in Toolbar. Document evidence shows in Inspector alongside graph evidence.
+**Acceptance:** Documents tab in Navigator. Upload documents (PDF, DOCX, PPTX, TXT, HTML, CSV, and other supported formats). Attach library to session. Vector store indicator in Toolbar. Document evidence shows in Inspector alongside graph evidence.
 
 * * *
 
@@ -198,7 +198,7 @@ Phase 3 builds on — but does not restructure — these prior-phase components:
 | Parse pipeline                   | Three-tier fallback                    | Maximises coverage: structural when possible, always has fallback   |
 | Tier 1 parser                    | Docling                                | Best structural extraction for headings, tables, reading order      |
 | Tier 2 parser                    | Unstructured                           | Good general-purpose extraction when Docling fails                  |
-| Tier 3 parser                    | PyPDF2 / python-docx (raw)             | Always works, but no structure preserved                            |
+| Tier 3 parser                    | PyPDF2 / python-docx / UTF-8 (raw)    | Always works, but no structure preserved                            |
 | Reranker                         | Cross-encoder (`ms-marco-MiniLM-L-6-v2`) | Lightweight, improves precision without heavy compute            |
 | Library scoping                  | Workspace-scoped, not session-scoped   | Libraries persist across sessions, one attachment at a time         |
 | Deduplication                    | SHA-256 hash per document              | Re-upload replaces chunks, prevents duplicates                     |

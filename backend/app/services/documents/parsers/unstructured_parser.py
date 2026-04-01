@@ -17,11 +17,8 @@ from app.services.documents.parsers.base import ParseResult, Section
 
 logger: Any = get_logger(__name__)
 
-_SUPPORTED_MIME_TYPES = {
-    "application/pdf",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/msword",
-}
+# No restriction — unstructured auto-detects format from file content.
+_SUPPORTED_MIME_TYPES: set[str] = set()
 
 # Element type names that carry meaningful content and should be included.
 _CONTENT_ELEMENT_TYPES = {
@@ -50,7 +47,9 @@ class ParseError(Exception):
 class UnstructuredParser:
     """Tier-2 structured document parser backed by the ``unstructured`` library.
 
-    Supported formats: PDF, DOCX.  Elements are grouped into
+    Supported formats: PDF, DOCX, PPTX, XLSX, HTML, TXT, CSV, TSV, RTF,
+    ODT, EPUB, EML, MSG, RST, Markdown, XML, JSON, and many others —
+    ``unstructured`` auto-detects from the file.  Elements are grouped into
     :class:`~app.services.documents.parsers.base.Section` objects: each
     ``Title``/``Header`` element starts a new section; ``NarrativeText``,
     ``ListItem``, ``Table`` etc. are accumulated under the current section.
@@ -66,49 +65,34 @@ class UnstructuredParser:
     def parse(self, file_path: Path, mime_type: str) -> ParseResult:
         """Extract structured text from *file_path*.
 
+        Uses ``unstructured.partition.auto.partition`` which auto-detects
+        the file format from content and extension.
+
         Args:
             file_path: Absolute path to the document file.
-            mime_type: MIME type of the file (used to select the sub-parser).
+            mime_type: MIME type of the file (passed for logging only).
 
         Returns:
             :class:`ParseResult` with ``parse_tier="standard"``.
 
         Raises:
-            ValueError:   If *mime_type* is not supported.
             ParseError:   If extraction fails (import error, corrupt file, …).
         """
-        if mime_type == "application/pdf":
-            return self._parse_pdf(file_path)
-        if mime_type in {
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "application/msword",
-        }:
-            return self._parse_docx(file_path)
-        raise ValueError(
-            f"Unsupported MIME type for UnstructuredParser: {mime_type!r}. "
-            f"Supported: {sorted(_SUPPORTED_MIME_TYPES)}"
-        )
-
-    # ------------------------------------------------------------------
-    # Sub-parsers
-    # ------------------------------------------------------------------
-
-    def _parse_pdf(self, file_path: Path) -> ParseResult:
-        """Partition a PDF with ``unstructured`` and convert to sections."""
         try:
-            from unstructured.partition.pdf import partition_pdf
+            from unstructured.partition.auto import partition
         except ImportError as exc:
             raise ParseError(
-                "unstructured[pdf] is not installed. Cannot parse PDF."
+                "unstructured is not installed. Cannot parse document."
             ) from exc
 
         try:
-            elements = partition_pdf(filename=str(file_path))
+            elements = partition(filename=str(file_path))
             sections = self._elements_to_sections(elements)
             full_text = "\n\n".join(s.content for s in sections)
             logger.info(
-                "unstructured_parser_pdf_done",
+                "unstructured_parser_done",
                 file=str(file_path),
+                mime_type=mime_type,
                 sections=len(sections),
                 chars=len(full_text),
             )
@@ -121,40 +105,7 @@ class UnstructuredParser:
             raise
         except Exception as exc:
             raise ParseError(
-                f"Unstructured failed to parse PDF {file_path}: {exc}"
-            ) from exc
-
-    def _parse_docx(self, file_path: Path) -> ParseResult:
-        """Partition a DOCX with ``unstructured`` and convert to sections."""
-        try:
-            from unstructured.partition.docx import (
-                partition_docx,
-            )
-        except ImportError as exc:
-            raise ParseError(
-                "unstructured[docx] is not installed. Cannot parse DOCX."
-            ) from exc
-
-        try:
-            elements = partition_docx(filename=str(file_path))
-            sections = self._elements_to_sections(elements)
-            full_text = "\n\n".join(s.content for s in sections)
-            logger.info(
-                "unstructured_parser_docx_done",
-                file=str(file_path),
-                sections=len(sections),
-                chars=len(full_text),
-            )
-            return ParseResult(
-                text=full_text,
-                sections=sections if sections else None,
-                parse_tier="standard",
-            )
-        except ParseError:
-            raise
-        except Exception as exc:
-            raise ParseError(
-                f"Unstructured failed to parse DOCX {file_path}: {exc}"
+                f"Unstructured failed to parse {file_path}: {exc}"
             ) from exc
 
     # ------------------------------------------------------------------

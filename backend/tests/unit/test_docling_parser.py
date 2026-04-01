@@ -232,10 +232,6 @@ class TestDoclingParserSections:
 class TestDoclingParserErrors:
     _MIME = "application/pdf"
 
-    def test_unsupported_mime_raises_value_error(self) -> None:
-        with pytest.raises(ValueError, match="Unsupported MIME type"):
-            DoclingParser().parse(Path("image.png"), "image/png")
-
     def test_docling_import_error_raises_parse_error(self) -> None:
         with patch.dict(sys.modules, {"docling.document_converter": None}):
             with pytest.raises(ParseError, match="docling is not installed"):

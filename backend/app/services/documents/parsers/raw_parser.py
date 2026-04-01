@@ -14,11 +14,8 @@ from app.services.documents.parsers.base import ParseResult, Section
 
 logger: Any = get_logger(__name__)
 
-_SUPPORTED_MIME_TYPES = {
-    "application/pdf",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/msword",
-}
+# No restriction — falls back to UTF-8 text read for unknown types.
+_SUPPORTED_MIME_TYPES: set[str] = set()
 
 
 class ParseError(Exception):
@@ -28,8 +25,9 @@ class ParseError(Exception):
 class RawParser:
     """Tier-3 plain-text document parser.
 
-    Supports PDF (via PyPDF2) and DOCX (via python-docx).
-    Returns ``parse_tier="basic"`` with one :class:`Section` per page/paragraph.
+    Supports PDF (via PyPDF2), DOCX (via python-docx), and any other file
+    type via UTF-8 text read fallback.  Returns ``parse_tier="basic"`` with
+    one :class:`Section` per page/paragraph/file.
 
     Usage::
 
@@ -59,10 +57,8 @@ class RawParser:
             "application/msword",
         }:
             return self._parse_docx(file_path)
-        raise ValueError(
-            f"Unsupported MIME type for RawParser: {mime_type!r}. "
-            f"Supported: {sorted(_SUPPORTED_MIME_TYPES)}"
-        )
+        # Fallback: try reading as UTF-8 text
+        return self._parse_text(file_path)
 
     # ------------------------------------------------------------------
     # Sub-parsers
@@ -145,3 +141,25 @@ class RawParser:
             raise
         except Exception as exc:
             raise ParseError(f"Failed to parse DOCX {file_path}: {exc}") from exc
+
+    def _parse_text(self, file_path: Path) -> ParseResult:
+        """Read a file as UTF-8 text (fallback for non-binary formats)."""
+        try:
+            text = file_path.read_text(encoding="utf-8", errors="replace").strip()
+            if not text:
+                raise ParseError(f"File is empty: {file_path}")
+            sections = [Section(content=text, heading=None, page_number=None)]
+            logger.info(
+                "raw_parser_text_done",
+                file=str(file_path),
+                chars=len(text),
+            )
+            return ParseResult(
+                text=text,
+                sections=sections,
+                parse_tier="basic",
+            )
+        except ParseError:
+            raise
+        except Exception as exc:
+            raise ParseError(f"Failed to read {file_path} as text: {exc}") from exc

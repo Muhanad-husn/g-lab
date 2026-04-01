@@ -258,7 +258,7 @@ Exports are versioned. The application validates the schema version on import an
 
 The Document Library is **workspace-scoped** — it persists across sessions within a single G-Lab installation. It is not session-scoped and not tied to any specific investigation.
 
-A **library entry** is a named collection of documents. Users upload PDFs or DOCX files into a library entry. Documents are chunked, embedded, and stored in a local vector database. A session can attach to one library entry at a time, giving the Copilot's document retrieval access to that collection.
+A **library entry** is a named collection of documents. Users upload files (PDF, DOCX, PPTX, XLSX, TXT, HTML, Markdown, CSV, and many other formats) into a library entry. Documents are chunked, embedded, and stored in a local vector database. A session can attach to one library entry at a time, giving the Copilot's document retrieval access to that collection.
 
 **Key behaviours:**
 

@@ -7,16 +7,20 @@ import { ParseTierBadge } from "@/components/shared/ParseTierBadge";
 import { MAX_DOC_UPLOAD_SIZE_MB } from "@/lib/constants";
 import type { DocumentUploadResponse, ParseTier } from "@/lib/types";
 
-// ─── Accepted MIME types ───────────────────────────────────────────────────────
+// ─── Accepted file extensions ─────────────────────────────────────────────────
 
-const ACCEPTED = {
-  "application/pdf": [".pdf"],
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
-    ".docx",
-  ],
-} as const;
+const ACCEPTED_EXTENSIONS = new Set([
+  // Documents
+  ".pdf", ".docx", ".doc", ".pptx", ".ppt", ".xlsx", ".xls",
+  ".odt", ".odp", ".ods", ".rtf", ".epub",
+  // Plain text / markup
+  ".txt", ".md", ".rst", ".org", ".adoc", ".html", ".htm",
+  ".xml", ".json", ".csv", ".tsv",
+  // Email
+  ".eml", ".msg",
+]);
 
-const ACCEPTED_MIME = Object.keys(ACCEPTED).join(",");
+const ACCEPT_STRING = Array.from(ACCEPTED_EXTENSIONS).join(",");
 
 // ─── UploadResult row ─────────────────────────────────────────────────────────
 
@@ -57,10 +61,9 @@ export function DocumentUpload({ libraryId }: DocumentUploadProps) {
       if (f.size > MAX_DOC_UPLOAD_SIZE_MB * 1024 * 1024) {
         return `${f.name} exceeds the ${MAX_DOC_UPLOAD_SIZE_MB} MB limit.`;
       }
-      const allowed = ["application/pdf",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
-      if (!allowed.includes(f.type)) {
-        return `${f.name} is not a supported type. Only PDF and DOCX are accepted.`;
+      const ext = f.name.includes(".") ? `.${f.name.split(".").pop()!.toLowerCase()}` : "";
+      if (!ACCEPTED_EXTENSIONS.has(ext)) {
+        return `${f.name} is not a supported file type.`;
       }
     }
     return null;
@@ -132,7 +135,7 @@ export function DocumentUpload({ libraryId }: DocumentUploadProps) {
         <p className="text-xs text-muted-foreground text-center">
           {isUploading
             ? "Uploading…"
-            : "Drop PDF or DOCX files here, or click to browse"}
+            : "Drop files here, or click to browse"}
         </p>
         <p className="text-[10px] text-muted-foreground/60">
           Max {MAX_DOC_UPLOAD_SIZE_MB} MB per file
@@ -142,7 +145,7 @@ export function DocumentUpload({ libraryId }: DocumentUploadProps) {
       <input
         ref={inputRef}
         type="file"
-        accept={ACCEPTED_MIME}
+        accept={ACCEPT_STRING}
         multiple
         className="hidden"
         onChange={onInputChange}

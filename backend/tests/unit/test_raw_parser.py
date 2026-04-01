@@ -171,15 +171,29 @@ class TestRawParserDOCX:
 
 
 # ---------------------------------------------------------------------------
-# Unsupported type
+# Text fallback
 # ---------------------------------------------------------------------------
 
 
-class TestRawParserUnsupported:
-    def test_unsupported_mime_type_raises_value_error(self) -> None:
-        with pytest.raises(ValueError, match="Unsupported MIME type"):
-            RawParser().parse(Path("image.png"), "image/png")
+class TestRawParserTextFallback:
+    def test_text_plain_uses_text_fallback(self, tmp_path: Path) -> None:
+        txt_file = tmp_path / "notes.txt"
+        txt_file.write_text("Hello world\nSecond line", encoding="utf-8")
+        result = RawParser().parse(txt_file, "text/plain")
+        assert result.parse_tier == "basic"
+        assert "Hello world" in result.text
 
-    def test_text_plain_not_supported(self) -> None:
-        with pytest.raises(ValueError, match="Unsupported MIME type"):
-            RawParser().parse(Path("notes.txt"), "text/plain")
+    def test_unknown_mime_uses_text_fallback(self, tmp_path: Path) -> None:
+        f = tmp_path / "data.csv"
+        f.write_text("a,b,c\n1,2,3", encoding="utf-8")
+        result = RawParser().parse(f, "text/csv")
+        assert result.parse_tier == "basic"
+        assert "a,b,c" in result.text
+
+    def test_empty_text_file_raises_parse_error(self, tmp_path: Path) -> None:
+        f = tmp_path / "empty.txt"
+        f.write_text("", encoding="utf-8")
+        from app.services.documents.parsers.raw_parser import ParseError
+
+        with pytest.raises(ParseError, match="empty"):
+            RawParser().parse(f, "text/plain")

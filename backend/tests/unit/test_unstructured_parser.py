@@ -15,26 +15,23 @@ import pytest
 # ---------------------------------------------------------------------------
 
 _unstructured_stub = MagicMock()
-_partition_pdf_stub = MagicMock()
-_partition_docx_stub = MagicMock()
+_partition_auto_stub = MagicMock()
 
 if "unstructured" not in sys.modules:
     sys.modules["unstructured"] = _unstructured_stub
 if "unstructured.partition" not in sys.modules:
     sys.modules["unstructured.partition"] = MagicMock()
-if "unstructured.partition.pdf" not in sys.modules:
-    _pdf_mod = MagicMock()
-    _pdf_mod.partition_pdf = _partition_pdf_stub
-    sys.modules["unstructured.partition.pdf"] = _pdf_mod
-if "unstructured.partition.docx" not in sys.modules:
-    _docx_mod = MagicMock()
-    _docx_mod.partition_docx = _partition_docx_stub
-    sys.modules["unstructured.partition.docx"] = _docx_mod
+if "unstructured.partition.auto" not in sys.modules:
+    _auto_mod = MagicMock()
+    _auto_mod.partition = _partition_auto_stub
+    sys.modules["unstructured.partition.auto"] = _auto_mod
 
 from app.services.documents.parsers.unstructured_parser import (  # noqa: E402
     ParseError,
     UnstructuredParser,
 )
+
+_PATCH_TARGET = "unstructured.partition.auto.partition"
 
 
 # ---------------------------------------------------------------------------
@@ -71,9 +68,7 @@ class TestUnstructuredParserPDF:
             _make_element("Title", "Background", page_number=2),
             _make_element("NarrativeText", "Some background info.", page_number=2),
         ]
-        with patch(
-            "unstructured.partition.pdf.partition_pdf", return_value=elements
-        ):
+        with patch(_PATCH_TARGET, return_value=elements):
             result = UnstructuredParser().parse(Path("doc.pdf"), self._MIME)
 
         assert result.parse_tier == "standard"
@@ -91,9 +86,7 @@ class TestUnstructuredParserPDF:
             _make_element("ListItem", "First point.", page_number=1),
             _make_element("ListItem", "Second point.", page_number=1),
         ]
-        with patch(
-            "unstructured.partition.pdf.partition_pdf", return_value=elements
-        ):
+        with patch(_PATCH_TARGET, return_value=elements):
             result = UnstructuredParser().parse(Path("list.pdf"), self._MIME)
 
         assert result.sections is not None
@@ -108,9 +101,7 @@ class TestUnstructuredParserPDF:
             _make_element("Title", "Data", page_number=3),
             _make_element("Table", "Col A | Col B\n1 | 2", page_number=3),
         ]
-        with patch(
-            "unstructured.partition.pdf.partition_pdf", return_value=elements
-        ):
+        with patch(_PATCH_TARGET, return_value=elements):
             result = UnstructuredParser().parse(Path("table.pdf"), self._MIME)
 
         assert result.sections is not None
@@ -122,9 +113,7 @@ class TestUnstructuredParserPDF:
             _make_element("NarrativeText", "Preamble text.", page_number=1),
             _make_element("NarrativeText", "More preamble.", page_number=1),
         ]
-        with patch(
-            "unstructured.partition.pdf.partition_pdf", return_value=elements
-        ):
+        with patch(_PATCH_TARGET, return_value=elements):
             result = UnstructuredParser().parse(Path("nohead.pdf"), self._MIME)
 
         assert result.sections is not None
@@ -139,9 +128,7 @@ class TestUnstructuredParserPDF:
             _make_element("Footer", "Page 1", page_number=1),
             _make_element("PageBreak", "", page_number=1),
         ]
-        with patch(
-            "unstructured.partition.pdf.partition_pdf", return_value=elements
-        ):
+        with patch(_PATCH_TARGET, return_value=elements):
             result = UnstructuredParser().parse(Path("footer.pdf"), self._MIME)
 
         assert result.sections is not None
@@ -149,9 +136,7 @@ class TestUnstructuredParserPDF:
         assert "Page 1" not in result.sections[0].content
 
     def test_parse_pdf_empty_elements_returns_none_sections(self) -> None:
-        with patch(
-            "unstructured.partition.pdf.partition_pdf", return_value=[]
-        ):
+        with patch(_PATCH_TARGET, return_value=[]):
             result = UnstructuredParser().parse(Path("empty.pdf"), self._MIME)
 
         assert result.sections is None
@@ -159,10 +144,10 @@ class TestUnstructuredParserPDF:
 
     def test_parse_pdf_exception_raises_parse_error(self) -> None:
         with patch(
-            "unstructured.partition.pdf.partition_pdf",
+            _PATCH_TARGET,
             side_effect=Exception("corrupt"),
         ):
-            with pytest.raises(ParseError, match="Unstructured failed to parse PDF"):
+            with pytest.raises(ParseError, match="Unstructured failed to parse"):
                 UnstructuredParser().parse(Path("bad.pdf"), self._MIME)
 
     def test_parse_pdf_full_text_joins_sections(self) -> None:
@@ -172,9 +157,7 @@ class TestUnstructuredParserPDF:
             _make_element("Title", "Sec 2", page_number=2),
             _make_element("NarrativeText", "Beta.", page_number=2),
         ]
-        with patch(
-            "unstructured.partition.pdf.partition_pdf", return_value=elements
-        ):
+        with patch(_PATCH_TARGET, return_value=elements):
             result = UnstructuredParser().parse(Path("multi.pdf"), self._MIME)
 
         assert "Alpha." in result.text
@@ -194,9 +177,7 @@ class TestUnstructuredParserDOCX:
             _make_element("Title", "Overview"),
             _make_element("NarrativeText", "Overview body."),
         ]
-        with patch(
-            "unstructured.partition.docx.partition_docx", return_value=elements
-        ):
+        with patch(_PATCH_TARGET, return_value=elements):
             result = UnstructuredParser().parse(Path("report.docx"), self._MIME)
 
         assert result.parse_tier == "standard"
@@ -205,28 +186,45 @@ class TestUnstructuredParserDOCX:
 
     def test_parse_docx_exception_raises_parse_error(self) -> None:
         with patch(
-            "unstructured.partition.docx.partition_docx",
+            _PATCH_TARGET,
             side_effect=RuntimeError("bad docx"),
         ):
-            with pytest.raises(ParseError, match="Unstructured failed to parse DOCX"):
+            with pytest.raises(ParseError, match="Unstructured failed to parse"):
                 UnstructuredParser().parse(Path("broken.docx"), self._MIME)
 
     def test_parse_msword_mime_accepted(self) -> None:
         elements = [_make_element("NarrativeText", "Legacy doc.")]
-        with patch(
-            "unstructured.partition.docx.partition_docx", return_value=elements
-        ):
+        with patch(_PATCH_TARGET, return_value=elements):
             result = UnstructuredParser().parse(Path("old.doc"), "application/msword")
 
         assert result.parse_tier == "standard"
 
 
 # ---------------------------------------------------------------------------
-# Unsupported MIME type
+# Auto-detection (any MIME type accepted)
 # ---------------------------------------------------------------------------
 
 
-class TestUnstructuredParserUnsupported:
-    def test_unsupported_mime_raises_value_error(self) -> None:
-        with pytest.raises(ValueError, match="Unsupported MIME type"):
-            UnstructuredParser().parse(Path("image.png"), "image/png")
+class TestUnstructuredParserAutoDetect:
+    def test_text_plain_accepted(self) -> None:
+        elements = [_make_element("NarrativeText", "Plain text content.")]
+        with patch(_PATCH_TARGET, return_value=elements):
+            result = UnstructuredParser().parse(Path("notes.txt"), "text/plain")
+        assert result.parse_tier == "standard"
+
+    def test_html_accepted(self) -> None:
+        elements = [
+            _make_element("Title", "Page Title"),
+            _make_element("NarrativeText", "Body content."),
+        ]
+        with patch(_PATCH_TARGET, return_value=elements):
+            result = UnstructuredParser().parse(Path("page.html"), "text/html")
+        assert result.parse_tier == "standard"
+        assert result.sections is not None
+        assert result.sections[0].heading == "Page Title"
+
+    def test_csv_accepted(self) -> None:
+        elements = [_make_element("Table", "a,b,c\n1,2,3")]
+        with patch(_PATCH_TARGET, return_value=elements):
+            result = UnstructuredParser().parse(Path("data.csv"), "text/csv")
+        assert result.parse_tier == "standard"
