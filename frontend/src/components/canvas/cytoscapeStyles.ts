@@ -37,7 +37,7 @@ export function getDisplayLabel(
   properties: Record<string, unknown>,
   labels: string[],
 ): string {
-  for (const key of ["name", "title", "_primary_value", "label", "id"]) {
+  for (const key of ["_primary_value", "name", "title", "label", "id"]) {
     const val = properties[key];
     if (typeof val === "string" && val.length > 0) return val;
     if (typeof val === "number") return String(val);
