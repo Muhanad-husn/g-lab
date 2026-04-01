@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import { ChevronDown, Download, Image, Pencil, Plug, Settings, Table, Trash2, Upload } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronDown, Clock, Download, FolderOpen, Image, Pencil, Plug, Settings, Table, Trash2, Upload } from "lucide-react";
 import iconDark from "@/assets/icon-dark.svg";
 import iconLight from "@/assets/icon-light.svg";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { createSession, exportSession, importSession, updateSession } from "@/api/sessions";
+import { createSession, deleteSession, exportSession, importSession, listSessions, updateSession } from "@/api/sessions";
+import { listFindings } from "@/api/findings";
+import { getHistory } from "@/api/copilot";
 import {
   createPreset,
   deletePreset,
@@ -35,6 +37,7 @@ import {
   updateCredentials,
   type CredentialsUpdate,
 } from "@/api/credentials";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useStore } from "@/store";
 import { PRESETS, type PresetName } from "@/lib/constants";
 import type { GraphEdge, GraphNode, PresetConfig, PresetResponse } from "@/lib/types";
@@ -824,6 +827,210 @@ function NewSessionDialog({ open, onClose }: NewSessionDialogProps) {
   );
 }
 
+// ─── Session Picker dialog ───────────────────────────────────────────────────
+
+interface SessionPickerDialogProps {
+  open: boolean;
+  onClose: () => void;
+}
+
+function SessionPickerDialog({ open, onClose }: SessionPickerDialogProps) {
+  const currentSession = useStore((s) => s.session);
+  const setSession = useStore((s) => s.setSession);
+  const setFindings = useStore((s) => s.setFindings);
+  const clearGraph = useStore((s) => s.clearGraph);
+  const loadHistory = useStore((s) => s.loadHistory);
+  const addToast = useStore((s) => s.addToast);
+
+  const [sessions, setSessions] = useState<
+    Array<{ id: string; name: string; updated_at: string; status: string }>
+  >([]);
+  const [loading, setLoading] = useState(false);
+  const [switching, setSwitching] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  // Fetch session list when dialog opens
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setLoading(true);
+    listSessions()
+      .then((list) => {
+        if (!cancelled) setSessions(list);
+      })
+      .catch(() => {
+        if (!cancelled) setSessions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  async function handleSwitch(sessionId: string) {
+    if (sessionId === currentSession?.id) return;
+    setSwitching(sessionId);
+    try {
+      const picked = sessions.find((s) => s.id === sessionId);
+      if (!picked) return;
+
+      // Clear current state
+      clearGraph();
+      setFindings([]);
+      loadHistory([]);
+
+      // Set the new session (we already have the data from list)
+      setSession(picked as import("@/lib/types").SessionResponse);
+
+      // Fetch findings + history for the new session (non-critical)
+      try {
+        const findings = await listFindings(sessionId);
+        setFindings(findings);
+      } catch {
+        // non-critical
+      }
+      try {
+        const messages = await getHistory(sessionId);
+        loadHistory(messages);
+      } catch {
+        // non-critical
+      }
+
+      addToast({
+        level: "success",
+        title: "Session switched",
+        message: `Now working on "${picked.name}".`,
+        duration: 3000,
+      });
+      onClose();
+    } catch (err) {
+      addToast({
+        level: "error",
+        title: "Switch failed",
+        message: err instanceof Error ? err.message : "Unknown error",
+        duration: 5000,
+      });
+    } finally {
+      setSwitching(null);
+    }
+  }
+
+  async function handleDelete(sessionId: string) {
+    if (sessionId === currentSession?.id) return;
+    setDeleting(sessionId);
+    try {
+      await deleteSession(sessionId);
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      addToast({
+        level: "success",
+        title: "Session deleted",
+        duration: 3000,
+      });
+    } catch (err) {
+      addToast({
+        level: "error",
+        title: "Delete failed",
+        message: err instanceof Error ? err.message : "Unknown error",
+        duration: 5000,
+      });
+    } finally {
+      setDeleting(null);
+    }
+  }
+
+  function formatDate(iso: string): string {
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Switch Session</DialogTitle>
+        </DialogHeader>
+        {loading ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">
+            Loading sessions…
+          </p>
+        ) : sessions.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">
+            No sessions found.
+          </p>
+        ) : (
+          <ScrollArea className="max-h-80">
+            <div className="flex flex-col gap-1 pr-3">
+              {sessions.map((s) => {
+                const isCurrent = s.id === currentSession?.id;
+                return (
+                  <div
+                    key={s.id}
+                    className={`flex items-center justify-between rounded-md px-3 py-2 text-sm ${
+                      isCurrent
+                        ? "bg-accent text-accent-foreground"
+                        : "hover:bg-muted/50 cursor-pointer"
+                    }`}
+                    onClick={() => !isCurrent && handleSwitch(s.id)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !isCurrent) handleSwitch(s.id);
+                    }}
+                  >
+                    <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                      <span className="font-medium truncate">
+                        {s.name}
+                        {isCurrent && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            (current)
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {formatDate(s.updated_at)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 ml-2 shrink-0">
+                      {switching === s.id && (
+                        <span className="text-xs text-muted-foreground">
+                          Loading…
+                        </span>
+                      )}
+                      {!isCurrent && !switching && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(s.id);
+                          }}
+                          disabled={deleting === s.id}
+                          title="Delete session"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </ScrollArea>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Canvas export helpers ────────────────────────────────────────────────────
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -915,6 +1122,7 @@ export function Toolbar() {
   const nodeCount = useStore((s) => s.nodes.length);
 
   const [newSessionOpen, setNewSessionOpen] = useState(false);
+  const [sessionPickerOpen, setSessionPickerOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [presetsOpen, setPresetsOpen] = useState(false);
   const [credentialsOpen, setCredentialsOpen] = useState(false);
@@ -1126,6 +1334,15 @@ export function Toolbar() {
             <Button
               variant="outline"
               size="sm"
+              className="h-8 w-8 p-0"
+              onClick={() => setSessionPickerOpen(true)}
+              title="Switch session"
+            >
+              <FolderOpen className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               className="h-8 text-xs"
               onClick={() => setNewSessionOpen(true)}
             >
@@ -1172,6 +1389,10 @@ export function Toolbar() {
         </DialogContent>
       </Dialog>
 
+      <SessionPickerDialog
+        open={sessionPickerOpen}
+        onClose={() => setSessionPickerOpen(false)}
+      />
       <NewSessionDialog
         open={newSessionOpen}
         onClose={() => setNewSessionOpen(false)}

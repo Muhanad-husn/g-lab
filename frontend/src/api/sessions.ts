@@ -8,6 +8,12 @@ import type {
 
 const BASE = "/sessions";
 
+/** Returns all sessions, sorted by updated_at descending. */
+export async function listSessions(): Promise<SessionResponse[]> {
+  const { data } = await client.get<SessionResponse[]>(BASE);
+  return data;
+}
+
 export async function createSession(
   body: SessionCreate,
 ): Promise<SessionResponse> {
