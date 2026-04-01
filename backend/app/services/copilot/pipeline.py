@@ -167,11 +167,11 @@ class CopilotPipeline:
         models = preset_config.models
         budgets = preset_config.tokenBudgets
 
-        router_model = models.get("router", "anthropic/claude-3-haiku")
+        router_model = models.get("router", "anthropic/claude-haiku-4-5")
         retrieval_model = models.get(
-            "graphRetrieval", "anthropic/claude-3-haiku"
+            "graphRetrieval", "anthropic/claude-haiku-4-5"
         )
-        synth_model = models.get("synthesiser", "anthropic/claude-3-haiku")
+        synth_model = models.get("synthesiser", "anthropic/claude-haiku-4-5")
 
         router_tokens = budgets.get("router", 256)
         retrieval_tokens = budgets.get("graphRetrieval", 512)

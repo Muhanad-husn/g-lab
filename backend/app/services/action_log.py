@@ -72,6 +72,34 @@ class ActionLogger:
     def _ndjson_path(self, session_id: str) -> Path:
         return self._data_dir / "sessions" / session_id / "action_log.ndjson"
 
+    async def _write_sqlite(
+        self,
+        entry: dict[str, Any],
+        session_id: str,
+        actor: str,
+        payload: dict[str, Any] | None,
+        result_summary: dict[str, Any] | None,
+        guardrail_warnings: list[str] | None,
+    ) -> None:
+        """Write a single action log row to SQLite."""
+        async with self._session_factory() as db:
+            row = ActionLog(
+                id=entry["id"],
+                session_id=session_id,
+                timestamp=entry["timestamp"],
+                action_type=entry["action_type"],
+                actor=actor,
+                payload=json.dumps(payload) if payload else None,
+                result_summary=(
+                    json.dumps(result_summary) if result_summary else None
+                ),
+                guardrail_warnings=(
+                    json.dumps(guardrail_warnings) if guardrail_warnings else None
+                ),
+            )
+            db.add(row)
+            await db.commit()
+
     async def log(
         self,
         session_id: str,
@@ -104,24 +132,18 @@ class ActionLogger:
             )
 
         # Sink 2: SQLite
+        # Shield from cancellation: when the SSE client disconnects, Starlette
+        # cancels the request scope (including BackgroundTasks).  The NDJSON
+        # write survives (runs in a thread), but the async SQLite write would
+        # lose the connection mid-commit.  asyncio.shield lets the inner task
+        # run to completion even when the outer task is cancelled.
         try:
-            async with self._session_factory() as db:
-                row = ActionLog(
-                    id=entry["id"],
-                    session_id=session_id,
-                    timestamp=entry["timestamp"],
-                    action_type=entry["action_type"],
-                    actor=actor,
-                    payload=json.dumps(payload) if payload else None,
-                    result_summary=(
-                        json.dumps(result_summary) if result_summary else None
-                    ),
-                    guardrail_warnings=(
-                        json.dumps(guardrail_warnings) if guardrail_warnings else None
-                    ),
-                )
-                db.add(row)
-                await db.commit()
+            await asyncio.shield(
+                self._write_sqlite(entry, session_id, actor, payload,
+                                   result_summary, guardrail_warnings)
+            )
+        except asyncio.CancelledError:
+            pass  # inner task still completes; suppress outer cancellation
         except Exception as exc:
             logger.warning(
                 "action_log.sqlite_write_failed",

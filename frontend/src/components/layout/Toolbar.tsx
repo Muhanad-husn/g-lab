@@ -417,7 +417,7 @@ function CopilotSettingsDialog({ open, onClose }: CopilotSettingsDialogProps) {
                 <Input
                   value={router}
                   onChange={(e) => setRouter(e.target.value)}
-                  placeholder="anthropic/claude-3-haiku-20240307"
+                  placeholder="anthropic/claude-haiku-4-5"
                   className="h-7 text-xs font-mono"
                 />
               </label>
@@ -427,7 +427,7 @@ function CopilotSettingsDialog({ open, onClose }: CopilotSettingsDialogProps) {
                 <Input
                   value={graphRetrieval}
                   onChange={(e) => setGraphRetrieval(e.target.value)}
-                  placeholder="anthropic/claude-3-5-sonnet-20241022"
+                  placeholder="anthropic/claude-sonnet-4"
                   className="h-7 text-xs font-mono"
                 />
               </label>
@@ -437,7 +437,7 @@ function CopilotSettingsDialog({ open, onClose }: CopilotSettingsDialogProps) {
                 <Input
                   value={synthesiser}
                   onChange={(e) => setSynthesiser(e.target.value)}
-                  placeholder="anthropic/claude-3.5-sonnet"
+                  placeholder="anthropic/claude-sonnet-4"
                   className="h-7 text-xs font-mono"
                 />
               </label>
@@ -466,9 +466,9 @@ const DEFAULT_PRESET_CONFIG: PresetConfig = {
   docTopK: 5,
   docRerankerK: 3,
   models: {
-    router: "anthropic/claude-3-haiku-20240307",
-    graphRetrieval: "anthropic/claude-3-5-sonnet-20241022",
-    synthesiser: "anthropic/claude-3.5-sonnet",
+    router: "anthropic/claude-haiku-4-5",
+    graphRetrieval: "anthropic/claude-sonnet-4",
+    synthesiser: "anthropic/claude-sonnet-4",
   },
   tokenBudgets: {
     router: 500,

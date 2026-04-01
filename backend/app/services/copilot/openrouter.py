@@ -97,7 +97,7 @@ class OpenRouterClient:
         """Send a chat completion request to OpenRouter.
 
         Args:
-            model: Model ID (e.g. "anthropic/claude-3-haiku").
+            model: Model ID (e.g. "anthropic/claude-haiku-4-5").
             messages: Chat messages in OpenAI format.
             temperature: Sampling temperature.
             max_tokens: Maximum tokens to generate.

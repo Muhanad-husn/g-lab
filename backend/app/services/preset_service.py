@@ -26,9 +26,9 @@ _SYSTEM_PRESETS: list[dict[str, object]] = [
             hops=2,
             expansionLimit=25,
             models={
-                "router": "anthropic/claude-3-haiku",
-                "graphRetrieval": "anthropic/claude-3-5-sonnet-20241022",
-                "synthesiser": "anthropic/claude-3.5-sonnet",
+                "router": "anthropic/claude-haiku-4-5",
+                "graphRetrieval": "anthropic/claude-sonnet-4",
+                "synthesiser": "anthropic/claude-sonnet-4",
             },
             tokenBudgets={
                 "router": 256,
@@ -44,9 +44,9 @@ _SYSTEM_PRESETS: list[dict[str, object]] = [
             hops=1,
             expansionLimit=10,
             models={
-                "router": "anthropic/claude-3-haiku",
-                "graphRetrieval": "anthropic/claude-3-haiku",
-                "synthesiser": "anthropic/claude-3-5-sonnet-20241022",
+                "router": "anthropic/claude-haiku-4-5",
+                "graphRetrieval": "anthropic/claude-haiku-4-5",
+                "synthesiser": "anthropic/claude-sonnet-4",
             },
             tokenBudgets={
                 "router": 128,
@@ -62,9 +62,9 @@ _SYSTEM_PRESETS: list[dict[str, object]] = [
             hops=5,
             expansionLimit=50,
             models={
-                "router": "anthropic/claude-3-5-sonnet-20241022",
-                "graphRetrieval": "anthropic/claude-3.5-sonnet",
-                "synthesiser": "anthropic/claude-3.5-sonnet",
+                "router": "anthropic/claude-sonnet-4",
+                "graphRetrieval": "anthropic/claude-sonnet-4",
+                "synthesiser": "anthropic/claude-sonnet-4",
             },
             tokenBudgets={
                 "router": 512,

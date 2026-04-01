@@ -59,7 +59,7 @@ class GraphRetrievalService:
         intent: RouterIntent,
         schema_summary: str,
         neo4j_service: Any,
-        model: str = "anthropic/claude-3-haiku",
+        model: str = "anthropic/claude-haiku-4-5",
         temperature: float = 0.0,
         max_tokens: int = 512,
         query: str = "",

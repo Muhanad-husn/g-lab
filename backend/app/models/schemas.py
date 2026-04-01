@@ -198,9 +198,9 @@ class PresetConfig(BaseModel):
     docRerankerK: int = 3
     models: dict[str, str] = Field(
         default_factory=lambda: {
-            "router": "anthropic/claude-3-haiku",
-            "graphRetrieval": "anthropic/claude-3-5-sonnet-20241022",
-            "synthesiser": "anthropic/claude-3.5-sonnet",
+            "router": "anthropic/claude-haiku-4-5",
+            "graphRetrieval": "anthropic/claude-sonnet-4",
+            "synthesiser": "anthropic/claude-sonnet-4",
         }
     )
     tokenBudgets: dict[str, int] = Field(

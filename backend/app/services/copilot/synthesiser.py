@@ -23,7 +23,7 @@ from app.services.copilot.sse import SSEEvent, parse_sse_buffer
 
 logger: Any = get_logger(__name__)
 
-_DEFAULT_MODEL = "anthropic/claude-3-haiku"
+_DEFAULT_MODEL = "anthropic/claude-haiku-4-5"
 _MAX_GRAPH_RESULTS_CHARS = 10_000
 
 

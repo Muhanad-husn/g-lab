@@ -48,6 +48,23 @@ _guardrails = GuardrailService()
 _logger: Any = get_logger(__name__)
 
 
+async def _save_conversation(
+    session_factory: async_sessionmaker[AsyncSession],
+    session_id: str,
+    user_query: str,
+    assistant_text: str,
+) -> None:
+    """Persist user + assistant messages. Called via asyncio.shield."""
+    async with session_factory() as conv_db:
+        await _svc.save_message(conv_db, session_id, "user", user_query)
+        await _svc.save_message(conv_db, session_id, "assistant", assistant_text)
+    _logger.debug(
+        "conversation_stored",
+        session_id=session_id,
+        text_len=len(assistant_text),
+    )
+
+
 # ---------------------------------------------------------------------------
 # POST /query
 # ---------------------------------------------------------------------------
@@ -151,22 +168,17 @@ async def query(
                     full_text.append(chunk)
             yield format_sse(event)
 
-        # After stream completes — store conversation messages
+        # After stream completes — store conversation messages.
+        # Shield from cancellation so messages persist even if the
+        # client disconnects before the generator fully closes.
         assistant_text = "".join(full_text)
         if assistant_text:
-            async with session_factory() as conv_db:
-                await _svc.save_message(conv_db, body.session_id, "user", body.query)
-                await _svc.save_message(
-                    conv_db,
-                    body.session_id,
-                    "assistant",
-                    assistant_text,
-                )
-            _logger.debug(
-                "conversation_stored",
-                session_id=body.session_id,
-                text_len=len(assistant_text),
-            )
+            try:
+                await asyncio.shield(_save_conversation(
+                    session_factory, body.session_id, body.query, assistant_text,
+                ))
+            except asyncio.CancelledError:
+                pass  # inner task still completes
 
     # Log action (fire-and-forget)
     background_tasks.add_task(

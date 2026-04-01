@@ -30,7 +30,7 @@ class RouterService:
         self,
         query: str,
         graph_context_summary: str = "",
-        model: str = "anthropic/claude-3-haiku",
+        model: str = "anthropic/claude-haiku-4-5",
         temperature: float = 0.0,
         max_tokens: int = 256,
     ) -> RouterIntent:
