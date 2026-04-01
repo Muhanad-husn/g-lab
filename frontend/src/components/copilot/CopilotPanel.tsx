@@ -281,12 +281,19 @@ export function CopilotPanel() {
           onEvidence: ({ sources }) => setEvidence(sources),
           onDocEvidence: ({ sources }) => appendDocEvidence(sources),
           onGraphDelta: (delta) => {
+            const nodes = Array.isArray(delta?.add_nodes)
+              ? delta.add_nodes
+              : [];
+            const edges = Array.isArray(delta?.add_edges)
+              ? delta.add_edges
+              : [];
+            if (nodes.length === 0 && edges.length === 0) return;
             // Snapshot current canvas for undo, then replace with delta data.
             // Don't use clearGraph() because it nulls canvasSnapshot.
             snapshotCanvas();
             useStore.setState({
-              nodes: delta.add_nodes,
-              edges: delta.add_edges,
+              nodes,
+              edges,
               positions: {},
               collapsedNodeIds: [],
             });

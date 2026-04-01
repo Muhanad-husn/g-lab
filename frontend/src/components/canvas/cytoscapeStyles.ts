@@ -24,8 +24,8 @@ function hashLabel(label: string): number {
 }
 
 /** Pick a stable color from the palette based on the node's primary label. */
-export function getLabelColor(labels: string[]): string {
-  if (labels.length === 0) return PALETTE[0];
+export function getLabelColor(labels: string[] | undefined | null): string {
+  if (!labels || labels.length === 0) return PALETTE[0];
   return PALETTE[hashLabel(labels[0]) % PALETTE.length];
 }
 
@@ -34,15 +34,17 @@ export function getLabelColor(labels: string[]): string {
  * Falls back to the primary label name, then "Node".
  */
 export function getDisplayLabel(
-  properties: Record<string, unknown>,
-  labels: string[],
+  properties: Record<string, unknown> | undefined | null,
+  labels: string[] | undefined | null,
 ): string {
-  for (const key of ["_primary_value", "name", "title", "label", "id"]) {
-    const val = properties[key];
-    if (typeof val === "string" && val.length > 0) return val;
-    if (typeof val === "number") return String(val);
+  if (properties) {
+    for (const key of ["_primary_value", "name", "title", "label", "id"]) {
+      const val = properties[key];
+      if (typeof val === "string" && val.length > 0) return val;
+      if (typeof val === "number") return String(val);
+    }
   }
-  return labels[0] ?? "Node";
+  return labels?.[0] ?? "Node";
 }
 
 // ─── Cytoscape stylesheet ─────────────────────────────────────────────────────
