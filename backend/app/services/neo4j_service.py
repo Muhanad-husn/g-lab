@@ -63,6 +63,8 @@ class Neo4jService:
                     uri,
                     auth=(user, password),
                     max_connection_pool_size=_POOL_SIZE,
+                    notifications_disabled_classifications=[],
+                    telemetry_disabled=True,
                 )
                 await driver.verify_connectivity()
                 self._driver = driver

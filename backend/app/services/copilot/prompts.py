@@ -236,6 +236,14 @@ Graph delta uses:
   event: graph_delta
   data: {{"add_nodes": [...], "add_edges": [...]}}
 
+  Each node MUST have this exact structure:
+    {{"id": "<element_id>", "labels": ["Label1"], "properties": {{"name": "...", ...}}}}
+  Each edge MUST have this exact structure:
+    {{"id": "<element_id>", "type": "REL_TYPE", "source": "<source_node_id>", "target": "<target_node_id>", "properties": {{...}}}}
+
+  Copy node/edge objects exactly as they appear in the graph results.
+  Do NOT simplify, flatten, or omit any fields.
+
 Confidence uses:
   event: confidence
   data: {{"score": 0.85, "band": "high"}}

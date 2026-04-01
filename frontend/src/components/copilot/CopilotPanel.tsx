@@ -281,12 +281,35 @@ export function CopilotPanel() {
           onEvidence: ({ sources }) => setEvidence(sources),
           onDocEvidence: ({ sources }) => appendDocEvidence(sources),
           onGraphDelta: (delta) => {
-            const nodes = Array.isArray(delta?.add_nodes)
+            const rawNodes = Array.isArray(delta?.add_nodes)
               ? delta.add_nodes
               : [];
-            const edges = Array.isArray(delta?.add_edges)
+            const rawEdges = Array.isArray(delta?.add_edges)
               ? delta.add_edges
               : [];
+            // Sanitize: ensure every node has id, labels, properties
+            const nodes = rawNodes
+              .filter((n) => n && typeof n.id === "string")
+              .map((n) => ({
+                ...n,
+                labels: Array.isArray(n.labels) ? n.labels : [],
+                properties:
+                  n.properties && typeof n.properties === "object"
+                    ? n.properties
+                    : {},
+              }));
+            const nodeIdSet = new Set(nodes.map((n) => n.id));
+            // Sanitize edges: require id, type, source, target referencing known nodes
+            const edges = rawEdges.filter(
+              (e) =>
+                e &&
+                typeof e.id === "string" &&
+                typeof e.type === "string" &&
+                typeof e.source === "string" &&
+                typeof e.target === "string" &&
+                nodeIdSet.has(e.source) &&
+                nodeIdSet.has(e.target),
+            );
             if (nodes.length === 0 && edges.length === 0) return;
             // Snapshot current canvas for undo, then replace with delta data.
             // Don't use clearGraph() because it nulls canvasSnapshot.
