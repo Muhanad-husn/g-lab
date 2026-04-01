@@ -56,7 +56,7 @@ G-Lab is a self-hosted, single-user application deployed via Docker Compose. All
 
 ### 2.1 Frontend — React + TypeScript
 
-**Canvas renderer:** Cytoscape.js. Chosen over D3 (too low-level for interactive graph manipulation) and Sigma.js (weaker layout ecosystem). Cytoscape provides built-in layout algorithms (force-directed via CoSE, hierarchical, concentric), compound nodes for future grouping, and a well-documented extension API. Rendering target is Canvas 2D via `cytoscape-canvas`; WebGL (via `cytoscape-webgl`) is a future optimisation if the 500-node cap proves insufficient before layout degrades.
+**Canvas renderer:** Cytoscape.js. Chosen over D3 (too low-level for interactive graph manipulation) and Sigma.js (weaker layout ecosystem). Cytoscape provides built-in and extension-based layout algorithms — CoSE-Bilkent (force-directed, default), Concentric, Grid, AVSDF (circular), CiSE, Cola, Euler, Spread, Dagre (hierarchical), and Klay (hierarchical) — compound nodes for future grouping, and a well-documented extension API. Rendering target is Canvas 2D via `cytoscape-canvas`; WebGL (via `cytoscape-webgl`) is a future optimisation if the 500-node cap proves insufficient before layout degrades.
 
 **State management:** Zustand. The application state decomposes into a few distinct slices (graph, session, UI, copilot) with moderate cross-slice reads but rare cross-slice writes. Zustand's lightweight footprint and selector-based subscriptions avoid unnecessary re-renders on canvas-heavy updates. Redux is overkill here; signals-based solutions are too immature for the ecosystem tooling we need.
 
