@@ -25,7 +25,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { createSession, deleteSession, exportSession, importSession, listSessions, updateSession } from "@/api/sessions";
+import { createSession, deleteSession, exportSession, importSession, listSessions, resetSession, updateSession } from "@/api/sessions";
 import { listFindings } from "@/api/findings";
 import { getHistory } from "@/api/copilot";
 import {
@@ -1117,6 +1117,7 @@ export function Toolbar() {
   const setSession = useStore((s) => s.setSession);
   const setFindings = useStore((s) => s.setFindings);
   const clearGraph = useStore((s) => s.clearGraph);
+  const clearConversation = useStore((s) => s.clearConversation);
   const addToast = useStore((s) => s.addToast);
   const advancedMode = useStore((s) => s.advancedMode);
   const nodeCount = useStore((s) => s.nodes.length);
@@ -1327,7 +1328,7 @@ export function Toolbar() {
               className="h-8 w-8 p-0"
               onClick={() => setClearOpen(true)}
               disabled={nodeCount === 0}
-              title="Clear canvas"
+              title="Reset canvas"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
@@ -1361,15 +1362,16 @@ export function Toolbar() {
         </div>
       </header>
 
-      {/* Clear canvas confirmation */}
+      {/* Reset confirmation */}
       <Dialog open={clearOpen} onOpenChange={setClearOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Clear Canvas</DialogTitle>
+            <DialogTitle>Reset Canvas</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             This will remove all {nodeCount} node{nodeCount !== 1 ? "s" : ""} and
-            their edges from the canvas. This action cannot be undone.
+            their edges from the canvas and clear the conversation history. Saved
+            findings are kept. This action cannot be undone.
           </p>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setClearOpen(false)}>
@@ -1380,10 +1382,14 @@ export function Toolbar() {
               size="sm"
               onClick={() => {
                 clearGraph();
+                clearConversation();
+                if (session) {
+                  resetSession(session.id).catch(() => {});
+                }
                 setClearOpen(false);
               }}
             >
-              Clear All
+              Reset
             </Button>
           </DialogFooter>
         </DialogContent>
