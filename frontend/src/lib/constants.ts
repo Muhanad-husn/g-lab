@@ -32,7 +32,7 @@ export const PRESETS: Record<PresetName, LocalPreset> = {
   deep_dive: {
     name: "deep_dive",
     label: "Deep Dive",
-    default_hops: 3,
+    default_hops: 5,
     default_expansion_limit: 50,
   },
   quick_look: {

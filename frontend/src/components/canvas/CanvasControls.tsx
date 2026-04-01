@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Settings2, EyeOff, Eye, Trash2, Route } from "lucide-react";
 import { useStore } from "@/store";
 import { useGraphActions } from "@/hooks/useGraphActions";
@@ -34,6 +34,11 @@ export function CanvasControls() {
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [expanding, setExpanding] = useState(false);
   const [findingPaths, setFindingPaths] = useState(false);
+
+  // Sync hops when preset changes
+  useEffect(() => {
+    setHops(presetConfig.default_hops);
+  }, [presetConfig.default_hops]);
 
   // Single selected node context
   const selectedNodeId =

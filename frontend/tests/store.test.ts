@@ -95,7 +95,7 @@ describe("configSlice", () => {
     store.getState().setPreset("deep_dive");
     expect(store.getState().activePreset).toBe("deep_dive");
     expect(store.getState().presetConfig).toEqual(PRESETS.deep_dive);
-    expect(store.getState().presetConfig.default_hops).toBe(3);
+    expect(store.getState().presetConfig.default_hops).toBe(5);
   });
 
   it("setPreset to quick_look has correct expansion limit", () => {
