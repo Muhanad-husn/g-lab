@@ -49,15 +49,21 @@ class Neo4jService:
         uri: str,
         user: str,
         password: str,
+        *,
+        max_retries: int = _MAX_RETRIES,
     ) -> None:
-        """Connect to Neo4j with retry (5 attempts, exp backoff, 30s max).
+        """Connect to Neo4j with retry and exponential backoff.
+
+        Args:
+            max_retries: Number of attempts. Use 1 for user-initiated
+                reconnects (no waiting); defaults to 5 for startup.
 
         Raises Neo4jConnectionError if all retries fail.
         """
         backoff = _INITIAL_BACKOFF
         last_err: BaseException | None = None
 
-        for attempt in range(1, _MAX_RETRIES + 1):
+        for attempt in range(1, max_retries + 1):
             try:
                 driver = AsyncGraphDatabase.driver(
                     uri,
@@ -86,12 +92,12 @@ class Neo4jService:
                     backoff=backoff,
                     error=str(exc),
                 )
-                if attempt < _MAX_RETRIES:
+                if attempt < max_retries:
                     await asyncio.sleep(backoff)
                     backoff = min(backoff * 2, _MAX_BACKOFF)
 
         raise Neo4jConnectionError(
-            f"Failed to connect after {_MAX_RETRIES} attempts: {last_err}"
+            f"Failed to connect after {max_retries} attempts: {last_err}"
         )
 
     async def close(self) -> None:

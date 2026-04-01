@@ -227,7 +227,7 @@ async def update_credentials(
 
         await neo4j_service.close()
         try:
-            await neo4j_service.connect(uri=uri, user=user, password=password)
+            await neo4j_service.connect(uri=uri, user=user, password=password, max_retries=1)
             neo4j_connected = True
         except Neo4jConnectionError:
             neo4j_connected = False
