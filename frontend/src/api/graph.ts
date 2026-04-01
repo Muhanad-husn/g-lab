@@ -25,18 +25,22 @@ export async function getOverview(): Promise<GraphOverview> {
 
 export async function getSamples(
   label: string,
+  skip = 0,
+  limit = 25,
 ): Promise<Record<string, unknown>[]> {
   const { data } = await client.get<Record<string, unknown>[]>(
-    `${BASE}/schema/samples/${encodeURIComponent(label)}`,
+    `${BASE}/schema/samples/${encodeURIComponent(label)}?skip=${skip}&limit=${limit}`,
   );
   return data;
 }
 
 export async function getRelSamples(
   type: string,
+  skip = 0,
+  limit = 25,
 ): Promise<Record<string, unknown>[]> {
   const { data } = await client.get<Record<string, unknown>[]>(
-    `${BASE}/schema/samples/rel/${encodeURIComponent(type)}`,
+    `${BASE}/schema/samples/rel/${encodeURIComponent(type)}?skip=${skip}&limit=${limit}`,
   );
   return data;
 }

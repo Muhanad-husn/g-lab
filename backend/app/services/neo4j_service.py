@@ -121,25 +121,27 @@ class Neo4jService:
         labels, rel_types = await asyncio.gather(labels_task, rel_types_task)
         return {"labels": labels, "relationship_types": rel_types}
 
-    async def get_samples(self, label: str, limit: int = 5) -> list[dict[str, Any]]:
+    async def get_samples(
+        self, label: str, *, skip: int = 0, limit: int = 25
+    ) -> list[dict[str, Any]]:
         """Return sample nodes for a given label."""
         self._require_driver()
         assert self._driver is not None
 
-        query = f"MATCH (n:`{_escape_label(label)}`) RETURN n LIMIT $limit"
+        query = f"MATCH (n:`{_escape_label(label)}`) RETURN n SKIP $skip LIMIT $limit"
         async with self._driver.session(
             default_access_mode="READ",
         ) as session:
             result = await session.execute_read(
                 _run_query,
                 query,
-                {"limit": limit},
+                {"skip": skip, "limit": limit},
                 _SCHEMA_TIMEOUT_MS,
             )
         return [_record_to_node(r["n"]) for r in result]
 
     async def get_relationship_samples(
-        self, rel_type: str, limit: int = 5
+        self, rel_type: str, *, skip: int = 0, limit: int = 25
     ) -> list[dict[str, Any]]:
         """Return sample relationships of a given type."""
         self._require_driver()
@@ -147,7 +149,7 @@ class Neo4jService:
 
         query = (
             f"MATCH (a)-[r:`{_escape_label(rel_type)}`]->(b) "
-            f"RETURN a, r, b LIMIT $limit"
+            f"RETURN a, r, b SKIP $skip LIMIT $limit"
         )
         async with self._driver.session(
             default_access_mode="READ",
@@ -155,7 +157,7 @@ class Neo4jService:
             result = await session.execute_read(
                 _run_query,
                 query,
-                {"limit": limit},
+                {"skip": skip, "limit": limit},
                 _SCHEMA_TIMEOUT_MS,
             )
         samples = []

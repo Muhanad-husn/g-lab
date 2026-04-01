@@ -9,7 +9,7 @@ import { SectionHeader } from "@/components/shared/SectionHeader";
 import { getDisplayLabel } from "@/components/canvas/cytoscapeStyles";
 import type { CentralNode, LabelInfo, RelTypeInfo } from "@/lib/types";
 
-const SAMPLE_PAGE_SIZE = 5;
+const SAMPLE_PAGE_SIZE = 25;
 
 // ─── Count badge ──────────────────────────────────────────────────────────────
 
@@ -22,86 +22,97 @@ function CountBadge({ count }: { count: number | null }) {
   );
 }
 
-// ─── Sample table with pagination ─────────────────────────────────────────────
+// ─── Sample table (renders a single page of rows) ───────────────────────────
 
 interface SampleTableProps {
   rows: Record<string, unknown>[];
   isRelType?: boolean;
   onSearchName?: (name: string) => void;
+  page: number;
+  totalPages: number;
+  loading?: boolean;
+  onPageChange: (page: number) => void;
 }
 
-function SampleTable({ rows, isRelType = false, onSearchName }: SampleTableProps) {
-  const [page, setPage] = useState(0);
-
-  if (rows.length === 0) {
+function SampleTable({
+  rows,
+  isRelType = false,
+  onSearchName,
+  page,
+  totalPages,
+  loading = false,
+  onPageChange,
+}: SampleTableProps) {
+  if (rows.length === 0 && !loading) {
     return (
       <p className="px-4 py-2 text-xs text-muted-foreground">No samples found.</p>
     );
   }
 
-  const columns = Object.keys(rows[0]);
-  const totalPages = Math.ceil(rows.length / SAMPLE_PAGE_SIZE);
-  const pageRows = rows.slice(
-    page * SAMPLE_PAGE_SIZE,
-    (page + 1) * SAMPLE_PAGE_SIZE,
-  );
+  const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
 
   return (
     <div className="overflow-x-auto px-2 pb-2">
-      <table className="w-full text-[10px] border-collapse">
-        <thead>
-          <tr>
-            {columns.map((col) => (
-              <th
-                key={col}
-                className="px-2 py-1 text-left font-medium text-muted-foreground border-b border-border"
-              >
-                {col}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {pageRows.map((row, i) => {
-            const isFirstCol = !isRelType && onSearchName;
-            return (
-              <tr key={i} className="hover:bg-accent/30">
-                {columns.map((col, colIdx) => (
-                  <td
-                    key={col}
-                    className="px-2 py-1 text-foreground max-w-[120px] truncate"
-                  >
-                    {colIdx === 0 && isFirstCol ? (
-                      <span className="inline-flex items-center gap-1">
-                        <span className="truncate">
-                          {row[col] === null ? (
-                            <span className="italic text-muted-foreground">null</span>
-                          ) : (
-                            String(row[col])
-                          )}
+      {columns.length > 0 && (
+        <table className="w-full text-[10px] border-collapse">
+          <thead>
+            <tr>
+              {columns.map((col) => (
+                <th
+                  key={col}
+                  className="px-2 py-1 text-left font-medium text-muted-foreground border-b border-border"
+                >
+                  {col}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => {
+              const isFirstCol = !isRelType && onSearchName;
+              return (
+                <tr key={i} className="hover:bg-accent/30">
+                  {columns.map((col, colIdx) => (
+                    <td
+                      key={col}
+                      className="px-2 py-1 text-foreground max-w-[120px] truncate"
+                    >
+                      {colIdx === 0 && isFirstCol ? (
+                        <span className="inline-flex items-center gap-1">
+                          <span className="truncate">
+                            {row[col] === null ? (
+                              <span className="italic text-muted-foreground">null</span>
+                            ) : (
+                              String(row[col])
+                            )}
+                          </span>
+                          <button
+                            title={`Search for ${String(row[col] ?? "")}`}
+                            className="p-0.5 rounded hover:bg-primary/20 text-muted-foreground hover:text-primary shrink-0"
+                            onClick={() => onSearchName(String(row[col] ?? ""))}
+                          >
+                            <Search className="h-3 w-3" />
+                          </button>
                         </span>
-                        <button
-                          title={`Search for ${String(row[col] ?? "")}`}
-                          className="p-0.5 rounded hover:bg-primary/20 text-muted-foreground hover:text-primary shrink-0"
-                          onClick={() => onSearchName(String(row[col] ?? ""))}
-                        >
-                          <Search className="h-3 w-3" />
-                        </button>
-                      </span>
-                    ) : row[col] === null ? (
-                      <span className="italic text-muted-foreground">null</span>
-                    ) : (
-                      String(row[col])
-                    )}
-                  </td>
-                ))}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                      ) : row[col] === null ? (
+                        <span className="italic text-muted-foreground">null</span>
+                      ) : (
+                        String(row[col])
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
 
-      {/* Pagination controls — only shown when there's more than one page */}
+      {loading && (
+        <p className="px-2 py-1 text-[10px] text-muted-foreground">Loading…</p>
+      )}
+
+      {/* Pagination controls */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-1 px-1">
           <span className="text-[10px] text-muted-foreground">
@@ -109,16 +120,16 @@ function SampleTable({ rows, isRelType = false, onSearchName }: SampleTableProps
           </span>
           <div className="flex gap-1">
             <button
-              onClick={() => setPage((p) => p - 1)}
-              disabled={page === 0}
+              onClick={() => onPageChange(page - 1)}
+              disabled={page === 0 || loading}
               className="p-0.5 rounded hover:bg-accent/50 disabled:opacity-30 disabled:cursor-not-allowed"
               aria-label="Previous page"
             >
               <ChevronLeft className="h-3 w-3" />
             </button>
             <button
-              onClick={() => setPage((p) => p + 1)}
-              disabled={page >= totalPages - 1}
+              onClick={() => onPageChange(page + 1)}
+              disabled={page >= totalPages - 1 || loading}
               className="p-0.5 rounded hover:bg-accent/50 disabled:opacity-30 disabled:cursor-not-allowed"
               aria-label="Next page"
             >
@@ -171,26 +182,43 @@ interface LabelRowProps {
 
 function LabelRow({ name, count, isRelType = false }: LabelRowProps) {
   const [expanded, setExpanded] = useState(false);
-  const [samples, setSamples] = useState<Record<string, unknown>[] | null>(null);
+  const [samples, setSamples] = useState<Record<string, unknown>[]>([]);
+  const [page, setPage] = useState(0);
+  const [initialized, setInitialized] = useState(false);
   const [loading, setLoading] = useState(false);
   const setNavigatorTab = useStore((s) => s.setNavigatorTab);
   const setSearchQuery = useStore((s) => s.setSearchQuery);
 
-  async function handleToggle() {
+  const totalPages = count !== null ? Math.max(1, Math.ceil(count / SAMPLE_PAGE_SIZE)) : 1;
+
+  async function fetchPage(p: number) {
+    setLoading(true);
+    try {
+      const skip = p * SAMPLE_PAGE_SIZE;
+      const data = isRelType
+        ? await getRelSamples(name, skip, SAMPLE_PAGE_SIZE)
+        : await getSamples(name, skip, SAMPLE_PAGE_SIZE);
+      const rows = isRelType ? flattenRelRows(data) : flattenNodeRows(data);
+      setSamples(rows);
+      setPage(p);
+    } catch {
+      setSamples([]);
+    } finally {
+      setLoading(false);
+      setInitialized(true);
+    }
+  }
+
+  function handleToggle() {
     const next = !expanded;
     setExpanded(next);
-    if (next && samples === null) {
-      setLoading(true);
-      try {
-        const data = isRelType ? await getRelSamples(name) : await getSamples(name);
-        const rows = isRelType ? flattenRelRows(data) : flattenNodeRows(data);
-        setSamples(rows);
-      } catch {
-        setSamples([]);
-      } finally {
-        setLoading(false);
-      }
+    if (next && !initialized) {
+      void fetchPage(0);
     }
+  }
+
+  function handlePageChange(p: number) {
+    void fetchPage(p);
   }
 
   function handleSearchName(displayName: string) {
@@ -201,7 +229,7 @@ function LabelRow({ name, count, isRelType = false }: LabelRowProps) {
   return (
     <div>
       <button
-        onClick={() => void handleToggle()}
+        onClick={handleToggle}
         className="flex w-full items-center gap-1.5 px-3 py-1.5 text-xs hover:bg-accent/50 rounded-sm transition-colors"
       >
         {expanded ? (
@@ -214,17 +242,15 @@ function LabelRow({ name, count, isRelType = false }: LabelRowProps) {
       </button>
       {expanded && (
         <div className="ml-3 border-l border-border">
-          {loading ? (
-            <p className="px-4 py-2 text-xs text-muted-foreground">Loading…</p>
-          ) : (
-            samples !== null && (
-              <SampleTable
-                rows={samples}
-                isRelType={isRelType}
-                onSearchName={isRelType ? undefined : handleSearchName}
-              />
-            )
-          )}
+          <SampleTable
+            rows={samples}
+            isRelType={isRelType}
+            onSearchName={isRelType ? undefined : handleSearchName}
+            page={page}
+            totalPages={totalPages}
+            loading={loading}
+            onPageChange={handlePageChange}
+          />
         </div>
       )}
     </div>

@@ -92,10 +92,14 @@ async def get_schema(
 @router.get("/schema/samples/rel/{rel_type}")
 async def get_rel_samples(
     rel_type: str,
+    skip: int = 0,
+    limit: int = 25,
     neo4j: Neo4jService = Depends(get_neo4j),
 ) -> dict[str, Any]:
     try:
-        samples = await neo4j.get_relationship_samples(rel_type)
+        samples = await neo4j.get_relationship_samples(
+            rel_type, skip=skip, limit=limit
+        )
     except TimeoutError as exc:
         raise HTTPException(status_code=504, detail="Sample query timed out") from exc
     return envelope(samples)
@@ -109,10 +113,12 @@ async def get_rel_samples(
 @router.get("/schema/samples/{label}")
 async def get_label_samples(
     label: str,
+    skip: int = 0,
+    limit: int = 25,
     neo4j: Neo4jService = Depends(get_neo4j),
 ) -> dict[str, Any]:
     try:
-        samples = await neo4j.get_samples(label)
+        samples = await neo4j.get_samples(label, skip=skip, limit=limit)
     except TimeoutError as exc:
         raise HTTPException(status_code=504, detail="Sample query timed out") from exc
     nodes = [GraphNode(**n) for n in samples]
