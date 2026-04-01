@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Settings2, EyeOff, Eye, Trash2 } from "lucide-react";
+import { Settings2, EyeOff, Eye, Trash2, Route } from "lucide-react";
 import { useStore } from "@/store";
 import { useGraphActions } from "@/hooks/useGraphActions";
 import { cytoscapeRef } from "@/lib/cytoscapeRef";
@@ -28,17 +28,25 @@ export function CanvasControls() {
   const collapsedNodeIds = useStore((s) => s.collapsedNodeIds);
   const collapseNode = useStore((s) => s.collapseNode);
   const removeNode = useStore((s) => s.removeNode);
-  const { expandNode } = useGraphActions();
+  const { expandNode, findPaths } = useGraphActions();
 
   const [hops, setHops] = useState(presetConfig.default_hops);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [expanding, setExpanding] = useState(false);
+  const [findingPaths, setFindingPaths] = useState(false);
 
   // Single selected node context
   const selectedNodeId =
     selectedIds.length === 1 &&
     nodes.some((n) => n.id === selectedIds[0])
       ? selectedIds[0]
+      : null;
+
+  // Two-node selection for path finding
+  const selectedPair =
+    selectedIds.length === 2 &&
+    selectedIds.every((id) => nodes.some((n) => n.id === id))
+      ? (selectedIds as [string, string])
       : null;
 
   const isCollapsed = selectedNodeId
@@ -79,6 +87,16 @@ export function CanvasControls() {
       });
     } finally {
       setExpanding(false);
+    }
+  }
+
+  async function handleFindPaths() {
+    if (!selectedPair) return;
+    setFindingPaths(true);
+    try {
+      await findPaths(selectedPair[0], selectedPair[1], { max_hops: hops });
+    } finally {
+      setFindingPaths(false);
     }
   }
 
@@ -188,6 +206,47 @@ export function CanvasControls() {
               >
                 <Trash2 className="h-3 w-3 mr-2" />
                 Remove
+              </DropdownMenuItem>
+            </>
+          )}
+
+          {/* ── Find Paths (when exactly two nodes are selected) ── */}
+          {selectedPair && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs">
+                Find Paths
+              </DropdownMenuLabel>
+
+              {/* Hops selector (reuse the same state) */}
+              <div className="px-2 py-1.5 flex items-center gap-2">
+                <span className="text-xs text-muted-foreground shrink-0">
+                  Max hops
+                </span>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <button
+                      key={n}
+                      onClick={() => setHops(n)}
+                      className={`h-6 w-6 rounded text-[10px] border transition-colors ${
+                        hops === n
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border text-muted-foreground hover:border-primary/50"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <DropdownMenuItem
+                onSelect={handleFindPaths}
+                disabled={findingPaths}
+                className="text-xs"
+              >
+                <Route className="h-3 w-3 mr-2" />
+                {findingPaths ? "Finding..." : "Shortest Path"}
               </DropdownMenuItem>
             </>
           )}
