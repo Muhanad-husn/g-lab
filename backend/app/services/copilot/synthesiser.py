@@ -278,6 +278,17 @@ def _node_display(node: dict[str, Any]) -> str:
     return f"({name} [{label_str}])"
 
 
+def _format_edge_props(props: dict[str, Any]) -> str:
+    """Format edge properties as a compact key=value string, skipping internals."""
+    skip = {"_dedupe_key", "_run_id", "_chunk_id", "_schema_version", "_created_at"}
+    pairs = [
+        f"{k}={v}"
+        for k, v in props.items()
+        if k not in skip and v is not None and str(v).strip()
+    ]
+    return ", ".join(pairs)
+
+
 def _format_path(path: list[dict[str, Any]]) -> str:
     """Convert an alternating node/edge list into a human-readable string."""
     parts: list[str] = []
@@ -286,7 +297,12 @@ def _format_path(path: list[dict[str, Any]]) -> str:
             parts.append(_node_display(elem))
         else:
             rel_type = elem.get("type", "RELATED_TO")
-            parts.append(f"-[{rel_type}]->")
+            props = elem.get("properties", {})
+            prop_str = _format_edge_props(props)
+            if prop_str:
+                parts.append(f"-[{rel_type} {{ {prop_str} }}]->")
+            else:
+                parts.append(f"-[{rel_type}]->")
     return "Path: " + " ".join(parts)
 
 

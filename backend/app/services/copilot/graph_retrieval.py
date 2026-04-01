@@ -770,12 +770,29 @@ def _clean_cypher_text(text: str) -> str:
     return text
 
 
+def _format_evidence_path(path: list[Any]) -> str:
+    """Format an interleaved node/edge path for evidence display."""
+    from app.services.copilot.synthesiser import _format_path, _is_path
+
+    if _is_path(path):
+        return _format_path(path)
+    return str(path)
+
+
 def _rows_to_evidence(rows: list[dict[str, Any]]) -> list[EvidenceSource]:
     """Convert raw row dicts to EvidenceSource objects (up to 20)."""
     evidence: list[EvidenceSource] = []
     for i, row in enumerate(rows[:20]):
         # Build a human-readable content string from the row values
-        content = "; ".join(f"{k}={v}" for k, v in row.items() if v is not None)
+        parts: list[str] = []
+        for k, v in row.items():
+            if v is None:
+                continue
+            if isinstance(v, list) and len(v) >= 3:
+                parts.append(f"{k}={_format_evidence_path(v)}")
+            else:
+                parts.append(f"{k}={v}")
+        content = "; ".join(parts)
         evidence.append(
             EvidenceSource(
                 type="graph_path",
