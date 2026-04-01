@@ -31,7 +31,6 @@ export interface UiSlice {
   navigatorTab: NavigatorTabId;
   /** Cross-component search query trigger (consumed by SearchPanel). */
   searchQuery: string;
-
   setSelectedIds: (ids: string[]) => void;
   clearSelection: () => void;
   setPanelState: (panel: keyof PanelStates, value: boolean) => void;
@@ -58,7 +57,6 @@ export const createUiSlice: StateCreator<UiSlice, [], [], UiSlice> = (set) => ({
   banners: [],
   navigatorTab: "database",
   searchQuery: "",
-
   setSelectedIds: (ids) => set({ selectedIds: ids }),
 
   clearSelection: () => set({ selectedIds: [] }),

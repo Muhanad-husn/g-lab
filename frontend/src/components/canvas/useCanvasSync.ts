@@ -155,7 +155,19 @@ export function useCanvasSync(cy: cytoscape.Core | null): void {
         const el = evt.target as cytoscape.SingularElementArgument;
         // Ignore taps on collapsed placeholders
         if (el.hasClass("collapsed-placeholder")) return;
-        setSelectedIds([el.id()]);
+        const id = el.id();
+        const original = evt.originalEvent as MouseEvent | undefined;
+        if (original && (original.ctrlKey || original.metaKey)) {
+          // Ctrl/Cmd+click: toggle element in multi-selection
+          const prev = useStore.getState().selectedIds;
+          if (prev.includes(id)) {
+            setSelectedIds(prev.filter((s) => s !== id));
+          } else {
+            setSelectedIds([...prev, id]);
+          }
+        } else {
+          setSelectedIds([id]);
+        }
       }
     };
 

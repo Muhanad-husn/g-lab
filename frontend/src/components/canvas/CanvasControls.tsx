@@ -42,7 +42,7 @@ export function CanvasControls() {
       ? selectedIds[0]
       : null;
 
-  // Two-node selection for path finding
+  // Two-node selection for path finding (Ctrl/Cmd+click)
   const selectedPair =
     selectedIds.length === 2 &&
     selectedIds.every((id) => nodes.some((n) => n.id === id))
@@ -90,11 +90,14 @@ export function CanvasControls() {
     }
   }
 
-  async function handleFindPaths() {
+  async function handleFindPaths(mode: "shortest" | "all_shortest") {
     if (!selectedPair) return;
     setFindingPaths(true);
     try {
-      await findPaths(selectedPair[0], selectedPair[1], { max_hops: hops });
+      await findPaths(selectedPair[0], selectedPair[1], {
+        max_hops: hops,
+        mode,
+      });
     } finally {
       setFindingPaths(false);
     }
@@ -210,7 +213,7 @@ export function CanvasControls() {
             </>
           )}
 
-          {/* ── Find Paths (when exactly two nodes are selected) ── */}
+          {/* ── Find Paths (when exactly two nodes are Ctrl/Cmd+clicked) ── */}
           {selectedPair && (
             <>
               <DropdownMenuSeparator />
@@ -218,7 +221,7 @@ export function CanvasControls() {
                 Find Paths
               </DropdownMenuLabel>
 
-              {/* Hops selector (reuse the same state) */}
+              {/* Max hops selector */}
               <div className="px-2 py-1.5 flex items-center gap-2">
                 <span className="text-xs text-muted-foreground shrink-0">
                   Max hops
@@ -241,12 +244,20 @@ export function CanvasControls() {
               </div>
 
               <DropdownMenuItem
-                onSelect={handleFindPaths}
+                onSelect={() => handleFindPaths("shortest")}
                 disabled={findingPaths}
                 className="text-xs"
               >
                 <Route className="h-3 w-3 mr-2" />
                 {findingPaths ? "Finding..." : "Shortest Path"}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => handleFindPaths("all_shortest")}
+                disabled={findingPaths}
+                className="text-xs"
+              >
+                <Route className="h-3 w-3 mr-2" />
+                {findingPaths ? "Finding..." : "All Shortest Paths"}
               </DropdownMenuItem>
             </>
           )}

@@ -70,7 +70,7 @@ export function useGraphActions() {
   async function findPaths(
     sourceId: string,
     targetId: string,
-    opts?: { max_hops?: number },
+    opts?: { max_hops?: number; mode?: "shortest" | "all_shortest" },
   ): Promise<PathResponse | null> {
     const state = useStore.getState();
     const currentCount = state.nodes.length;
@@ -80,6 +80,7 @@ export function useGraphActions() {
         source_id: sourceId,
         target_id: targetId,
         max_hops: opts?.max_hops ?? presetConfig.default_hops,
+        mode: opts?.mode ?? "shortest",
         current_canvas_count: currentCount,
         session_id: sessionId,
       });
