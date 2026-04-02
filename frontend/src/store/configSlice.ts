@@ -5,7 +5,7 @@ import {
   type LocalPreset,
   type PresetName,
 } from "@/lib/constants";
-import type { PresetResponse } from "@/lib/types";
+import type { AdvancedParams, PresetResponse } from "@/lib/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -21,6 +21,7 @@ export interface ConfigSlice {
     graphRetrieval: string;
     synthesiser: string;
   };
+  advancedParams: AdvancedParams;
   /** Backend presets loaded from API. */
   presets: PresetResponse[];
 
@@ -29,6 +30,7 @@ export interface ConfigSlice {
   setModelAssignments: (
     assignments: Partial<ConfigSlice["modelAssignments"]>,
   ) => void;
+  setAdvancedParams: (params: Partial<AdvancedParams>) => void;
   /** Replace the full preset list (called after API load). */
   setPresets: (presets: PresetResponse[]) => void;
   /** Add or update a preset in the list. */
@@ -45,6 +47,14 @@ const DEFAULT_MODEL_ASSIGNMENTS = {
   synthesiser: "anthropic/claude-sonnet-4",
 };
 
+const DEFAULT_ADVANCED_PARAMS: AdvancedParams = {
+  routerTemperature: 0.0,
+  retrievalTemperature: 0.0,
+  synthesiserTemperature: 0.7,
+  docTopK: 5,
+  rerankerTopK: 3,
+};
+
 // ─── Slice creator ────────────────────────────────────────────────────────────
 
 export const createConfigSlice: StateCreator<
@@ -57,6 +67,7 @@ export const createConfigSlice: StateCreator<
   presetConfig: PRESETS[DEFAULT_PRESET],
   advancedMode: false,
   modelAssignments: DEFAULT_MODEL_ASSIGNMENTS,
+  advancedParams: DEFAULT_ADVANCED_PARAMS,
   presets: [],
 
   setPreset: (name) =>
@@ -70,6 +81,11 @@ export const createConfigSlice: StateCreator<
   setModelAssignments: (assignments) =>
     set((state) => ({
       modelAssignments: { ...state.modelAssignments, ...assignments },
+    })),
+
+  setAdvancedParams: (params) =>
+    set((state) => ({
+      advancedParams: { ...state.advancedParams, ...params },
     })),
 
   setPresets: (presets) => set({ presets }),

@@ -268,13 +268,23 @@ export function CopilotPanel() {
     startStream();
 
     try {
+      const state = useStore.getState();
       await startSSE(
         `${API_BASE}/copilot/query`,
         {
           query: text,
           session_id: sessionId!,
           include_graph_context: true,
-          model_assignments: useStore.getState().modelAssignments,
+          model_assignments: state.modelAssignments,
+          advanced_params: state.advancedMode
+            ? {
+                router_temperature: state.advancedParams.routerTemperature,
+                retrieval_temperature: state.advancedParams.retrievalTemperature,
+                synthesiser_temperature: state.advancedParams.synthesiserTemperature,
+                doc_top_k: state.advancedParams.docTopK,
+                reranker_top_k: state.advancedParams.rerankerTopK,
+              }
+            : undefined,
         },
         {
           onTextChunk: ({ text }) => appendTextChunk(text),

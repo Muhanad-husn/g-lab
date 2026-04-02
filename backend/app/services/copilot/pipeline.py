@@ -178,8 +178,16 @@ class CopilotPipeline:
         synth_tokens = budgets.get("synthesiser", 4096)
         context_window_tokens = budgets.get("contextWindow", 128_000)
 
-        doc_top_k = _GUARDRAILS.SOFT_LIMITS["doc_retrieval_top_k"]
-        reranker_top_k = _GUARDRAILS.SOFT_LIMITS["reranker_top_k"]
+        # Advanced params — user overrides or defaults
+        adv = request.advanced_params
+        router_temp = adv.router_temperature if adv else 0.0
+        retrieval_temp = adv.retrieval_temperature if adv else 0.0
+        synth_temp = adv.synthesiser_temperature if adv else 0.7
+        doc_top_k = adv.doc_top_k if adv else _GUARDRAILS.SOFT_LIMITS["doc_retrieval_top_k"]
+        reranker_top_k = min(
+            adv.reranker_top_k if adv else _GUARDRAILS.SOFT_LIMITS["reranker_top_k"],
+            doc_top_k,
+        )
 
         router_svc = RouterService(openrouter_client)
         graph_retrieval_svc = GraphRetrievalService(openrouter_client)
@@ -191,7 +199,7 @@ class CopilotPipeline:
             query=request.query,
             graph_context_summary=schema_summary,
             model=router_model,
-            temperature=0.0,
+            temperature=router_temp,
             max_tokens=router_tokens,
         )
         logger.debug(
@@ -215,7 +223,7 @@ class CopilotPipeline:
             schema_summary=schema_summary,
             neo4j_service=neo4j_service,
             model=retrieval_model,
-            temperature=0.0,
+            temperature=retrieval_temp,
             max_tokens=retrieval_tokens,
             query=request.query,
         )
@@ -265,6 +273,7 @@ class CopilotPipeline:
             graph_results=rows,
             graph_context=schema_summary,
             model=synth_model,
+            temperature=synth_temp,
             max_tokens=synth_tokens,
             doc_chunks=doc_chunks,
             conversation_history=conversation_history,
@@ -295,7 +304,7 @@ class CopilotPipeline:
                 schema_summary=schema_summary,
                 neo4j_service=neo4j_service,
                 model=retrieval_model,
-                temperature=0.3,  # more exploratory
+                temperature=max(retrieval_temp, 0.3),  # at least 0.3 for re-retrieval
                 max_tokens=retrieval_tokens,
                 query=request.query,
             )
@@ -321,6 +330,7 @@ class CopilotPipeline:
                 graph_results=combined_rows,
                 graph_context=schema_summary,
                 model=synth_model,
+                temperature=synth_temp,
                 max_tokens=synth_tokens,
                 doc_chunks=combined_docs,
                 conversation_history=conversation_history,

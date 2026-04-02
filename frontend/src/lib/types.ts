@@ -186,6 +186,14 @@ export interface GuardrailDetail {
 // ─── Phase 2: Presets ─────────────────────────────────────────────────────────
 // Source of truth: docs/ARCHITECTURE.md §14.3 / backend PresetConfig
 
+export interface AdvancedParams {
+  routerTemperature: number;
+  retrievalTemperature: number;
+  synthesiserTemperature: number;
+  docTopK: number;
+  rerankerTopK: number;
+}
+
 export interface PresetConfig {
   hops: number;
   expansionLimit: number;

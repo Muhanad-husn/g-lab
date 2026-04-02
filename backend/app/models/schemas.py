@@ -235,11 +235,22 @@ class PresetResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class AdvancedParams(BaseModel):
+    """User-tunable pipeline parameters exposed in Advanced Mode."""
+
+    router_temperature: float = Field(0.0, ge=0.0, le=2.0)
+    retrieval_temperature: float = Field(0.0, ge=0.0, le=2.0)
+    synthesiser_temperature: float = Field(0.7, ge=0.0, le=2.0)
+    doc_top_k: int = Field(5, ge=1, le=50)
+    reranker_top_k: int = Field(3, ge=1, le=20)
+
+
 class CopilotQueryRequest(BaseModel):
     query: str
     session_id: str
     include_graph_context: bool = True
     model_assignments: dict[str, str] | None = None
+    advanced_params: AdvancedParams | None = None
 
 
 class CopilotMessage(BaseModel):

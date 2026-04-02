@@ -356,13 +356,29 @@ function CopilotSettingsDialog({ open, onClose }: CopilotSettingsDialogProps) {
   const setAdvancedMode = useStore((s) => s.setAdvancedMode);
   const modelAssignments = useStore((s) => s.modelAssignments);
   const setModelAssignments = useStore((s) => s.setModelAssignments);
+  const advancedParams = useStore((s) => s.advancedParams);
+  const setAdvancedParams = useStore((s) => s.setAdvancedParams);
 
   const [router, setRouter] = useState(modelAssignments.router);
   const [graphRetrieval, setGraphRetrieval] = useState(modelAssignments.graphRetrieval);
   const [synthesiser, setSynthesiser] = useState(modelAssignments.synthesiser);
 
+  // Advanced param local state
+  const [routerTemp, setRouterTemp] = useState(advancedParams.routerTemperature);
+  const [retrievalTemp, setRetrievalTemp] = useState(advancedParams.retrievalTemperature);
+  const [synthTemp, setSynthTemp] = useState(advancedParams.synthesiserTemperature);
+  const [docTopK, setDocTopK] = useState(advancedParams.docTopK);
+  const [rerankerTopK, setRerankerTopK] = useState(advancedParams.rerankerTopK);
+
   function handleSave() {
     setModelAssignments({ router, graphRetrieval, synthesiser });
+    setAdvancedParams({
+      routerTemperature: routerTemp,
+      retrievalTemperature: retrievalTemp,
+      synthesiserTemperature: synthTemp,
+      docTopK,
+      rerankerTopK,
+    });
     onClose();
   }
 
@@ -372,13 +388,30 @@ function CopilotSettingsDialog({ open, onClose }: CopilotSettingsDialogProps) {
       setRouter(modelAssignments.router);
       setGraphRetrieval(modelAssignments.graphRetrieval);
       setSynthesiser(modelAssignments.synthesiser);
+      setRouterTemp(advancedParams.routerTemperature);
+      setRetrievalTemp(advancedParams.retrievalTemperature);
+      setSynthTemp(advancedParams.synthesiserTemperature);
+      setDocTopK(advancedParams.docTopK);
+      setRerankerTopK(advancedParams.rerankerTopK);
       onClose();
     }
   }
 
+  function clampTemp(v: string): number {
+    const n = parseFloat(v);
+    if (isNaN(n)) return 0;
+    return Math.min(2, Math.max(0, Math.round(n * 10) / 10));
+  }
+
+  function clampInt(v: string, min: number, max: number): number {
+    const n = parseInt(v, 10);
+    if (isNaN(n)) return min;
+    return Math.min(max, Math.max(min, n));
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Copilot Settings</DialogTitle>
         </DialogHeader>
@@ -389,7 +422,7 @@ function CopilotSettingsDialog({ open, onClose }: CopilotSettingsDialogProps) {
             <div>
               <p className="text-sm font-medium">Advanced Mode</p>
               <p className="text-xs text-muted-foreground">
-                Configure individual model assignments per pipeline stage
+                Fine-tune model assignments, temperatures, and retrieval parameters
               </p>
             </div>
             <button
@@ -408,43 +441,136 @@ function CopilotSettingsDialog({ open, onClose }: CopilotSettingsDialogProps) {
             </button>
           </div>
 
-          {/* Model assignments — shown when advanced mode is on */}
+          {/* Advanced config — shown when advanced mode is on */}
           {advancedMode && (
-            <div className="flex flex-col gap-3 border border-border rounded-md p-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Model Assignments
-              </p>
+            <>
+              {/* Model assignments */}
+              <div className="flex flex-col gap-3 border border-border rounded-md p-3">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Model Assignments
+                </p>
 
-              <label className="flex flex-col gap-1">
-                <span className="text-xs text-foreground">Router</span>
-                <Input
-                  value={router}
-                  onChange={(e) => setRouter(e.target.value)}
-                  placeholder="anthropic/claude-haiku-4-5"
-                  className="h-7 text-xs font-mono"
-                />
-              </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs text-foreground">Router</span>
+                  <Input
+                    value={router}
+                    onChange={(e) => setRouter(e.target.value)}
+                    placeholder="anthropic/claude-haiku-4-5"
+                    className="h-7 text-xs font-mono"
+                  />
+                </label>
 
-              <label className="flex flex-col gap-1">
-                <span className="text-xs text-foreground">Graph Retrieval</span>
-                <Input
-                  value={graphRetrieval}
-                  onChange={(e) => setGraphRetrieval(e.target.value)}
-                  placeholder="anthropic/claude-sonnet-4"
-                  className="h-7 text-xs font-mono"
-                />
-              </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs text-foreground">Graph Retrieval</span>
+                  <Input
+                    value={graphRetrieval}
+                    onChange={(e) => setGraphRetrieval(e.target.value)}
+                    placeholder="anthropic/claude-sonnet-4"
+                    className="h-7 text-xs font-mono"
+                  />
+                </label>
 
-              <label className="flex flex-col gap-1">
-                <span className="text-xs text-foreground">Synthesiser</span>
-                <Input
-                  value={synthesiser}
-                  onChange={(e) => setSynthesiser(e.target.value)}
-                  placeholder="anthropic/claude-sonnet-4"
-                  className="h-7 text-xs font-mono"
-                />
-              </label>
-            </div>
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs text-foreground">Synthesiser</span>
+                  <Input
+                    value={synthesiser}
+                    onChange={(e) => setSynthesiser(e.target.value)}
+                    placeholder="anthropic/claude-sonnet-4"
+                    className="h-7 text-xs font-mono"
+                  />
+                </label>
+              </div>
+
+              {/* Temperature controls */}
+              <div className="flex flex-col gap-3 border border-border rounded-md p-3">
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Temperature
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Controls randomness. 0 = deterministic, higher = more creative. Range: 0–2.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[10px] text-foreground">Router</span>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="2"
+                      value={routerTemp}
+                      onChange={(e) => setRouterTemp(clampTemp(e.target.value))}
+                      className="h-7 text-xs font-mono"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[10px] text-foreground">Retrieval</span>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="2"
+                      value={retrievalTemp}
+                      onChange={(e) => setRetrievalTemp(clampTemp(e.target.value))}
+                      className="h-7 text-xs font-mono"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[10px] text-foreground">Synthesiser</span>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="2"
+                      value={synthTemp}
+                      onChange={(e) => setSynthTemp(clampTemp(e.target.value))}
+                      className="h-7 text-xs font-mono"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Retrieval parameters */}
+              <div className="flex flex-col gap-3 border border-border rounded-md p-3">
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Document Retrieval
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Top K = chunks fetched from vector store. Reranker K = chunks kept after reranking.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[10px] text-foreground">Retrieval Top K</span>
+                    <Input
+                      type="number"
+                      step="1"
+                      min="1"
+                      max="50"
+                      value={docTopK}
+                      onChange={(e) => setDocTopK(clampInt(e.target.value, 1, 50))}
+                      className="h-7 text-xs font-mono"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[10px] text-foreground">Reranker Top K</span>
+                    <Input
+                      type="number"
+                      step="1"
+                      min="1"
+                      max="20"
+                      value={rerankerTopK}
+                      onChange={(e) => setRerankerTopK(clampInt(e.target.value, 1, 20))}
+                      className="h-7 text-xs font-mono"
+                    />
+                  </label>
+                </div>
+              </div>
+            </>
           )}
         </div>
 
