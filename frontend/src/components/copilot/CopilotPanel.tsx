@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Bookmark, Bot, MessageSquarePlus } from "lucide-react";
+import { ArrowUp, Bookmark, Bot, MessageSquarePlus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useStore } from "@/store";
 import { useSSE } from "@/hooks/useSSE";
 import { useReadOnlyMode } from "@/hooks/useReadOnlyMode";
@@ -204,6 +206,7 @@ export function CopilotPanel() {
   const isReadOnly = useReadOnlyMode();
   const { start: startSSE, stop: stopSSE } = useSSE();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const sessionId = useStore((s) => s.session?.id ?? null);
   const messages = useStore((s) => s.messages);
@@ -237,6 +240,16 @@ export function CopilotPanel() {
       el.scrollTop = el.scrollHeight;
     }
   }, [messages, streamingContent]);
+
+  // Auto-grow textarea as user types
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const maxH = 120;
+    el.style.height = `${Math.min(el.scrollHeight, maxH)}px`;
+    el.style.overflowY = el.scrollHeight > maxH ? "auto" : "hidden";
+  }, [query]);
 
   const disabled = isStreaming || isReadOnly || !sessionId;
 
@@ -424,9 +437,10 @@ export function CopilotPanel() {
       )}
 
       {/* Message list */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto">
+      <ScrollArea className="flex-1">
+        <div ref={scrollRef}>
         {messages.length === 0 && !isStreaming && (
-          <div className="flex flex-col items-center justify-center h-32 text-muted-foreground gap-2 px-6 text-center">
+          <div className="flex flex-col items-center justify-center h-full min-h-[8rem] text-muted-foreground gap-2 px-6 text-center">
             <Bot className="h-6 w-6 opacity-30" />
             <span className="text-xs">Ask Copilot a question about your graph</span>
             <span className="text-[10px] opacity-60">Use natural language to explore nodes, relationships, and patterns</span>
@@ -436,12 +450,14 @@ export function CopilotPanel() {
           <MessageBubble key={msg.id} message={msg} />
         ))}
         {isStreaming && <StreamingBubble content={streamingContent} />}
-      </div>
+        </div>
+      </ScrollArea>
 
       {/* Input area */}
-      <div className="shrink-0 border-t border-border p-2 flex gap-2">
+      <div className="shrink-0 border-t border-border p-3 flex gap-2">
         <textarea
-          className="flex-1 text-xs resize-none rounded border border-input bg-background px-2 py-1.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 min-h-[40px] max-h-[80px]"
+          ref={textareaRef}
+          className="flex-1 text-xs resize-none rounded border border-input bg-background px-2 py-1.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 min-h-[40px]"
           placeholder={
             isReadOnly
               ? "Neo4j offline — Copilot unavailable"
@@ -455,13 +471,15 @@ export function CopilotPanel() {
           disabled={disabled}
           rows={1}
         />
-        <button
-          className="shrink-0 px-3 py-1.5 rounded bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed self-end"
+        <Button
+          size="sm"
+          className="shrink-0 h-8 w-8 p-0 self-end"
           onClick={() => void handleSubmit()}
           disabled={disabled || !query.trim()}
+          title="Send message"
         >
-          Send
-        </button>
+          <ArrowUp className="h-4 w-4" />
+        </Button>
       </div>
     </div>
   );

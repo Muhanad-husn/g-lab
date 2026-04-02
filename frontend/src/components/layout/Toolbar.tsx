@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Clock, Download, FolderOpen, Image, Pencil, Plug, Settings, Table, Trash2, Upload } from "lucide-react";
+import { ChevronDown, Clock, Download, FolderOpen, Image, Pencil, Plug, Plus, Settings, Table, Trash2, Upload } from "lucide-react";
 import iconDark from "@/assets/icon-dark.svg";
 import iconLight from "@/assets/icon-light.svg";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { createSession, deleteSession, exportSession, importSession, listSessions, resetSession, updateSession } from "@/api/sessions";
@@ -69,7 +70,7 @@ function StatusDot() {
   return (
     <span className="flex items-center gap-1.5" title={label}>
       <span className={`h-2 w-2 rounded-full ${color}`} />
-      <span className="text-xs text-muted-foreground hidden sm:inline">
+      <span className="text-xs text-muted-foreground hidden lg:inline">
         {label}
       </span>
     </span>
@@ -141,7 +142,7 @@ function CopilotStatusDot() {
   return (
     <span className="flex items-center gap-1.5" title={label}>
       <span className={`h-2 w-2 rounded-full ${color}`} />
-      <span className="text-xs text-muted-foreground hidden lg:inline">
+      <span className="text-xs text-muted-foreground hidden xl:inline">
         {label}
       </span>
     </span>
@@ -1366,7 +1367,7 @@ export function Toolbar() {
 
           <Separator orientation="vertical" className="h-5" />
 
-          {/* Group 3: Export / Import / Clear / New Session */}
+          {/* Group 3: File / Clear / Sessions / New */}
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -1375,7 +1376,7 @@ export function Toolbar() {
                   size="sm"
                   className="h-8 gap-1.5 text-xs"
                   disabled={!session || exporting}
-                  title={session ? "Export options" : "No active session"}
+                  title={session ? "Export & import" : "No active session"}
                 >
                   <Download className="h-3.5 w-3.5" />
                   {exporting ? "Exporting…" : "Export"}
@@ -1428,6 +1429,14 @@ export function Toolbar() {
                   <Table className="h-3.5 w-3.5 mr-2" />
                   Canvas as CSV
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={importing}
+                >
+                  <Upload className="h-3.5 w-3.5 mr-2" />
+                  {importing ? "Importing…" : "Import session"}
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <input
@@ -1437,17 +1446,6 @@ export function Toolbar() {
               className="hidden"
               onChange={handleImportFile}
             />
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1.5 text-xs"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={importing}
-              title="Import session"
-            >
-              <Upload className="h-3.5 w-3.5" />
-              {importing ? "Importing…" : "Import"}
-            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -1470,17 +1468,18 @@ export function Toolbar() {
             <Button
               variant="outline"
               size="sm"
-              className="h-8 text-xs"
+              className="h-8 w-8 p-0"
               onClick={() => setNewSessionOpen(true)}
+              title="New session"
             >
-              New Session
+              <Plus className="h-3.5 w-3.5" />
             </Button>
           </div>
 
           <Separator orientation="vertical" className="h-5" />
 
           {/* Group 4: Status dots */}
-          <div className="flex items-center gap-3 rounded-md bg-muted/30 px-2.5 py-1">
+          <div className="flex items-center gap-2 rounded-md bg-muted/30 px-2 py-1">
             <StatusDot />
             <CopilotStatusDot />
             <VectorStoreDot />
