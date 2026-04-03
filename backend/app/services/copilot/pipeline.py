@@ -265,6 +265,9 @@ class CopilotPipeline:
                 data={"sources": [e.model_dump() for e in doc_evidence]},
             )
 
+        # Notify frontend that synthesis is starting
+        yield SSEEvent(event="status", data={"stage": "synthesising"})
+
         # ── Step 3: First synthesis pass (buffered to inspect confidence)
         first_pass: list[SSEEvent] = []
         confidence_score: float | None = None
@@ -325,6 +328,7 @@ class CopilotPipeline:
             )
             combined_rows = (rows + re_rows)[:50]
             combined_docs = (doc_chunks + re_doc_chunks)[: reranker_top_k * 2]
+            yield SSEEvent(event="status", data={"stage": "synthesising"})
             async for event in synthesiser_svc.synthesise(
                 query=request.query,
                 graph_results=combined_rows,
