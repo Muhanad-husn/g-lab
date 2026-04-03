@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowUp, Bookmark, Bot, MessageSquarePlus } from "lucide-react";
+import {
+  ArrowUp,
+  Bookmark,
+  Bot,
+  History,
+  MessageSquarePlus,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useStore } from "@/store";
@@ -8,8 +14,12 @@ import { useReadOnlyMode } from "@/hooks/useReadOnlyMode";
 import { ConfidenceBadge } from "./ConfidenceBadge";
 import { API_BASE } from "@/lib/constants";
 import { createFinding } from "@/api/findings";
-import { clearHistory } from "@/api/copilot";
-import type { CopilotMessage } from "@/lib/types";
+import {
+  getHistory,
+  listConversations,
+  startNewConversation,
+} from "@/api/copilot";
+import type { ConversationSummary, CopilotMessage } from "@/lib/types";
 
 // ─── Pipeline status indicator ─────────────────────────────────────────────────
 
@@ -199,6 +209,89 @@ function ContextWarningBanner({ onNewChat }: { onNewChat: () => void }) {
   );
 }
 
+// ─── Conversation history dropdown ──────────────────────────────────────────
+
+function ConversationHistoryDropdown({
+  conversations,
+  activeId,
+  onSelect,
+  onClose,
+}: {
+  conversations: ConversationSummary[];
+  activeId: string | null;
+  onSelect: (id: string) => void;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        onClose();
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [onClose]);
+
+  if (conversations.length === 0) {
+    return (
+      <div
+        ref={ref}
+        className="absolute top-full left-0 right-0 z-50 mt-0.5 bg-popover border border-border rounded-md shadow-md p-3"
+      >
+        <p className="text-[10px] text-muted-foreground text-center">
+          No previous conversations
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={ref}
+      className="absolute top-full left-0 right-0 z-50 mt-0.5 bg-popover border border-border rounded-md shadow-md max-h-64 overflow-y-auto"
+    >
+      <div className="p-1.5">
+        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide px-2 py-1">
+          Conversation History
+        </p>
+        {conversations.map((conv) => {
+          const isActive = conv.id === activeId;
+          const date = new Date(conv.created_at);
+          const timeStr = date.toLocaleString(undefined, {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+          return (
+            <button
+              key={conv.id}
+              className={`w-full text-left px-2 py-1.5 rounded text-xs hover:bg-muted transition-colors ${
+                isActive ? "bg-primary/10 text-primary" : "text-foreground"
+              }`}
+              onClick={() => onSelect(conv.id)}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="truncate flex-1 font-medium">
+                  {conv.preview || "Empty conversation"}
+                </span>
+                <span className="text-[10px] text-muted-foreground shrink-0">
+                  {conv.message_count}
+                </span>
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">
+                {timeStr}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Copilot panel ─────────────────────────────────────────────────────────────
 
 export function CopilotPanel() {
@@ -207,6 +300,7 @@ export function CopilotPanel() {
   const { start: startSSE, stop: stopSSE } = useSSE();
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const sessionId = useStore((s) => s.session?.id ?? null);
   const messages = useStore((s) => s.messages);
@@ -215,9 +309,9 @@ export function CopilotPanel() {
   const pipelineStatus = useStore((s) => s.pipelineStatus);
   const canvasSnapshot = useStore((s) => s.canvasSnapshot);
   const revertToSnapshot = useStore((s) => s.revertToSnapshot);
+  const activeConversationId = useStore((s) => s.activeConversationId);
+  const conversations = useStore((s) => s.conversations);
 
-  // Actions are stable references in Zustand — use individual selectors to avoid
-  // creating a new object every render (which would cause an infinite re-render loop).
   const startStream = useStore((s) => s.startStream);
   const appendTextChunk = useStore((s) => s.appendTextChunk);
   const setEvidence = useStore((s) => s.setEvidence);
@@ -232,6 +326,9 @@ export function CopilotPanel() {
   const contextTrimmed = useStore((s) => s.contextTrimmed);
   const setContextTrimmed = useStore((s) => s.setContextTrimmed);
   const clearConversation = useStore((s) => s.clearConversation);
+  const setActiveConversationId = useStore((s) => s.setActiveConversationId);
+  const setConversations = useStore((s) => s.setConversations);
+  const loadHistory = useStore((s) => s.loadHistory);
 
   // Auto-scroll to bottom when messages or streaming content change
   useEffect(() => {
@@ -256,11 +353,46 @@ export function CopilotPanel() {
   async function handleNewChat() {
     if (!sessionId) return;
     try {
-      await clearHistory(sessionId);
+      const newConvId = await startNewConversation(sessionId);
+      setActiveConversationId(newConvId);
+      clearConversation();
+      // Refresh conversation list
+      const convs = await listConversations(sessionId);
+      setConversations(convs);
     } catch {
       // Best-effort — clear local state regardless
+      clearConversation();
+      setActiveConversationId(null);
     }
-    clearConversation();
+  }
+
+  async function handleToggleHistory() {
+    if (historyOpen) {
+      setHistoryOpen(false);
+      return;
+    }
+    if (!sessionId) return;
+    try {
+      const convs = await listConversations(sessionId);
+      setConversations(convs);
+    } catch {
+      // Use whatever we have cached
+    }
+    setHistoryOpen(true);
+  }
+
+  async function handleSelectConversation(conversationId: string) {
+    if (!sessionId) return;
+    setHistoryOpen(false);
+    if (conversationId === activeConversationId) return;
+
+    try {
+      const msgs = await getHistory(sessionId, conversationId);
+      loadHistory(msgs);
+      setActiveConversationId(conversationId);
+    } catch {
+      // Failed to load — keep current state
+    }
   }
 
   async function handleSubmit() {
@@ -269,10 +401,23 @@ export function CopilotPanel() {
 
     setQuery("");
 
+    // Ensure we have a conversation_id
+    let convId = activeConversationId;
+    if (!convId) {
+      try {
+        convId = await startNewConversation(sessionId!);
+        setActiveConversationId(convId);
+      } catch {
+        convId = crypto.randomUUID();
+        setActiveConversationId(convId);
+      }
+    }
+
     // Add user message to store immediately
     addMessage({
       id: crypto.randomUUID(),
       session_id: sessionId!,
+      conversation_id: convId,
       role: "user",
       content: text,
       timestamp: new Date().toISOString(),
@@ -287,6 +432,7 @@ export function CopilotPanel() {
         {
           query: text,
           session_id: sessionId!,
+          conversation_id: convId,
           include_graph_context: true,
           model_assignments: state.modelAssignments,
           advanced_params: state.advancedMode
@@ -354,6 +500,7 @@ export function CopilotPanel() {
             addMessage({
               id: crypto.randomUUID(),
               session_id: sessionId!,
+              conversation_id: convId!,
               role: "assistant",
               content: `Error: ${err.message}`,
               timestamp: new Date().toISOString(),
@@ -366,6 +513,7 @@ export function CopilotPanel() {
       addMessage({
         id: crypto.randomUUID(),
         session_id: sessionId!,
+        conversation_id: convId!,
         role: "assistant",
         content: `Connection error: ${err instanceof Error ? err.message : String(err)}`,
         timestamp: new Date().toISOString(),
@@ -381,8 +529,7 @@ export function CopilotPanel() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-card">
-      {/* Header */}
+    <div className="flex flex-col h-full bg-card relative">
       {/* Header */}
       <div className="h-9 flex items-center px-3 border-b border-border shrink-0 gap-2">
         <span className="text-xs font-semibold text-foreground">Copilot</span>
@@ -410,17 +557,36 @@ export function CopilotPanel() {
             </button>
           )}
           {sessionId && !isStreaming && (
-            <button
-              className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30"
-              onClick={() => void handleNewChat()}
-              title="Start new conversation"
-              disabled={messages.length === 0}
-            >
-              <MessageSquarePlus className="h-4 w-4" />
-            </button>
+            <>
+              <button
+                className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted"
+                onClick={() => void handleToggleHistory()}
+                title="Conversation history"
+              >
+                <History className="h-4 w-4" />
+              </button>
+              <button
+                className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30"
+                onClick={() => void handleNewChat()}
+                title="Start new conversation"
+                disabled={messages.length === 0}
+              >
+                <MessageSquarePlus className="h-4 w-4" />
+              </button>
+            </>
           )}
         </div>
       </div>
+
+      {/* Conversation history dropdown */}
+      {historyOpen && (
+        <ConversationHistoryDropdown
+          conversations={conversations}
+          activeId={activeConversationId}
+          onSelect={(id) => void handleSelectConversation(id)}
+          onClose={() => setHistoryOpen(false)}
+        />
+      )}
 
       {/* Pipeline status */}
       <StatusDot status={pipelineStatus} />

@@ -385,8 +385,8 @@ async def test_history_returns_messages_after_query(
     # Pre-seed conversation directly via service
     svc = ConversationService()
     async with factory() as db:
-        await svc.save_message(db, "sess-hist", "user", "My question")
-        await svc.save_message(db, "sess-hist", "assistant", "My answer")
+        await svc.save_message(db, "sess-hist", "user", "My question", "conv-hist")
+        await svc.save_message(db, "sess-hist", "assistant", "My answer", "conv-hist")
 
     resp = await client.get("/api/v1/copilot/history/sess-hist")
     assert resp.status_code == 200
@@ -407,7 +407,7 @@ async def test_history_respects_limit_param(
     svc = ConversationService()
     async with factory() as db:
         for i in range(10):
-            await svc.save_message(db, "sess-lim", "user", f"msg-{i}")
+            await svc.save_message(db, "sess-lim", "user", f"msg-{i}", "conv-lim")
 
     resp = await client.get("/api/v1/copilot/history/sess-lim?limit=3")
     assert resp.status_code == 200

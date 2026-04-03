@@ -267,8 +267,8 @@ async def test_integration_conversation_stored_after_pipeline(
 
     svc = ConversationService()
     async with db_factory() as db:
-        await svc.save_message(db, session_id, "user", query)
-        await svc.save_message(db, session_id, "assistant", full_response)
+        await svc.save_message(db, session_id, "user", query, "conv-test")
+        await svc.save_message(db, session_id, "assistant", full_response, "conv-test")
 
     # Verify persistence
     async with db_factory() as db:

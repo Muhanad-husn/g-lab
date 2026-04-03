@@ -1,6 +1,10 @@
 import { API_BASE } from "@/lib/constants";
-import type { CopilotMessage, CopilotQueryRequest } from "@/lib/types";
-import { del, get } from "./client";
+import type {
+  ConversationSummary,
+  CopilotMessage,
+  CopilotQueryRequest,
+} from "@/lib/types";
+import { del, get, post } from "./client";
 
 /**
  * Submit a copilot query and return the raw Response for SSE streaming.
@@ -27,12 +31,16 @@ export async function streamQuery(
   return response;
 }
 
-/** Retrieve conversation history for a session. */
+/** Retrieve conversation history for a session (optionally for a specific conversation). */
 export async function getHistory(
   sessionId: string,
+  conversationId?: string,
 ): Promise<CopilotMessage[]> {
+  const params = conversationId
+    ? `?conversation_id=${encodeURIComponent(conversationId)}`
+    : "";
   const { data } = await get<CopilotMessage[]>(
-    `/copilot/history/${sessionId}`,
+    `/copilot/history/${sessionId}${params}`,
   );
   return data;
 }
@@ -45,4 +53,24 @@ export async function clearHistory(
     `/copilot/history/${sessionId}`,
   );
   return data;
+}
+
+/** List all conversations for a session, newest first. */
+export async function listConversations(
+  sessionId: string,
+): Promise<ConversationSummary[]> {
+  const { data } = await get<ConversationSummary[]>(
+    `/copilot/conversations/${sessionId}`,
+  );
+  return data;
+}
+
+/** Start a new conversation for a session. Returns the new conversation ID. */
+export async function startNewConversation(
+  sessionId: string,
+): Promise<string> {
+  const { data } = await post<{ conversation_id: string }>(
+    `/copilot/conversations/${sessionId}/new`,
+  );
+  return data.conversation_id;
 }

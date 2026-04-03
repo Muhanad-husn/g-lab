@@ -236,6 +236,7 @@ export interface PresetResponse {
 export interface CopilotQueryRequest {
   query: string;
   session_id: string;
+  conversation_id?: string | null;
   include_graph_context?: boolean;
   model_assignments?: Record<string, string> | null;
 }
@@ -243,10 +244,19 @@ export interface CopilotQueryRequest {
 export interface CopilotMessage {
   id: string;
   session_id: string;
+  conversation_id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: string;
   metadata?: Record<string, unknown> | null;
+}
+
+export interface ConversationSummary {
+  id: string;
+  session_id: string;
+  created_at: string;
+  preview: string;
+  message_count: number;
 }
 
 export interface RouterIntent {

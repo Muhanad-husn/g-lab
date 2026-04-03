@@ -1,5 +1,6 @@
 import type { StateCreator } from "zustand";
 import type {
+  ConversationSummary,
   CopilotMessage,
   ConfidenceScore,
   EvidenceSource,
@@ -22,6 +23,11 @@ export interface CopilotSlice {
   /** True when the backend trimmed older messages from the context window. */
   contextTrimmed: boolean;
 
+  /** Active conversation ID for the current session. */
+  activeConversationId: string | null;
+  /** List of conversation summaries for the current session. */
+  conversations: ConversationSummary[];
+
   startStream: () => void;
   appendTextChunk: (content: string) => void;
   setEvidence: (sources: EvidenceSource[]) => void;
@@ -38,6 +44,9 @@ export interface CopilotSlice {
   setContextTrimmed: (v: boolean) => void;
   /** Reset all conversation state for a fresh chat. */
   clearConversation: () => void;
+
+  setActiveConversationId: (id: string | null) => void;
+  setConversations: (conversations: ConversationSummary[]) => void;
 }
 
 // ─── Slice creator ────────────────────────────────────────────────────────────
@@ -56,6 +65,8 @@ export const createCopilotSlice: StateCreator<
   pipelineStatus: null,
   toolUsed: null,
   contextTrimmed: false,
+  activeConversationId: null,
+  conversations: [],
 
   startStream: () =>
     set({
@@ -90,6 +101,7 @@ export const createCopilotSlice: StateCreator<
       const msg: CopilotMessage = {
         id: crypto.randomUUID(),
         session_id: sessionId,
+        conversation_id: state.activeConversationId ?? "",
         role: "assistant",
         content: state.streamingContent,
         timestamp: new Date().toISOString(),
@@ -106,7 +118,12 @@ export const createCopilotSlice: StateCreator<
   addMessage: (message) =>
     set((state) => ({ messages: [...state.messages, message] })),
 
-  loadHistory: (messages) => set({ messages }),
+  loadHistory: (messages) =>
+    set({
+      messages,
+      activeConversationId:
+        messages.length > 0 ? messages[0].conversation_id : null,
+    }),
 
   setContextTrimmed: (v) => set({ contextTrimmed: v }),
 
@@ -120,4 +137,8 @@ export const createCopilotSlice: StateCreator<
       pipelineStatus: null,
       contextTrimmed: false,
     }),
+
+  setActiveConversationId: (id) => set({ activeConversationId: id }),
+
+  setConversations: (conversations) => set({ conversations }),
 });

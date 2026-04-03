@@ -248,6 +248,7 @@ class AdvancedParams(BaseModel):
 class CopilotQueryRequest(BaseModel):
     query: str
     session_id: str
+    conversation_id: str | None = None
     include_graph_context: bool = True
     model_assignments: dict[str, str] | None = None
     advanced_params: AdvancedParams | None = None
@@ -256,10 +257,19 @@ class CopilotQueryRequest(BaseModel):
 class CopilotMessage(BaseModel):
     id: str
     session_id: str
+    conversation_id: str
     role: str
     content: str
     timestamp: str
     metadata: dict[str, Any] | None = None
+
+
+class ConversationSummary(BaseModel):
+    id: str
+    session_id: str
+    created_at: str
+    preview: str
+    message_count: int
 
 
 class RouterIntent(BaseModel):

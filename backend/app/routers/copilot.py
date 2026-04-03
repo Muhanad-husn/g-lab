@@ -3,8 +3,11 @@
 All endpoints are prefixed with /api/v1/copilot (set in main.py).
 
 Routes:
-  POST /copilot/query              — stream copilot response (SSE)
-  GET  /copilot/history/{session_id} — list conversation messages
+  POST /copilot/query                            — stream copilot response (SSE)
+  GET  /copilot/history/{session_id}             — list conversation messages
+  DELETE /copilot/history/{session_id}           — clear all history for session
+  GET  /copilot/conversations/{session_id}       — list conversations for session
+  POST /copilot/conversations/{session_id}/new   — start a new conversation
 """
 
 from __future__ import annotations
@@ -51,16 +54,22 @@ _logger: Any = get_logger(__name__)
 async def _save_conversation(
     session_factory: async_sessionmaker[AsyncSession],
     session_id: str,
+    conversation_id: str,
     user_query: str,
     assistant_text: str,
 ) -> None:
     """Persist user + assistant messages. Called via asyncio.shield."""
     async with session_factory() as conv_db:
-        await _svc.save_message(conv_db, session_id, "user", user_query)
-        await _svc.save_message(conv_db, session_id, "assistant", assistant_text)
+        await _svc.save_message(
+            conv_db, session_id, "user", user_query, conversation_id
+        )
+        await _svc.save_message(
+            conv_db, session_id, "assistant", assistant_text, conversation_id
+        )
     _logger.debug(
         "conversation_stored",
         session_id=session_id,
+        conversation_id=conversation_id,
         text_len=len(assistant_text),
     )
 
@@ -140,8 +149,17 @@ async def query(
         request.app.state.db_session_factory
     )
 
+    # Resolve conversation_id: use provided one or fall back to latest
+    conversation_id = body.conversation_id
+    if not conversation_id:
+        conversation_id = await _svc.get_active_conversation_id(db, body.session_id)
+    if not conversation_id:
+        conversation_id = await _svc.start_new_conversation(body.session_id)
+
     # Fetch conversation history for multi-turn context
-    history_msgs = await _svc.get_history(db, body.session_id, limit=50)
+    history_msgs = await _svc.get_history(
+        db, body.session_id, conversation_id=conversation_id, limit=50
+    )
     conversation_history = [
         {"role": m.role, "content": m.content} for m in history_msgs
     ]
@@ -175,7 +193,11 @@ async def query(
         if assistant_text:
             try:
                 await asyncio.shield(_save_conversation(
-                    session_factory, body.session_id, body.query, assistant_text,
+                    session_factory,
+                    body.session_id,
+                    conversation_id,
+                    body.query,
+                    assistant_text,
                 ))
             except asyncio.CancelledError:
                 pass  # inner task still completes
@@ -189,6 +211,7 @@ async def query(
         payload={
             "query": body.query,
             "include_graph_context": body.include_graph_context,
+            "conversation_id": conversation_id,
         },
         result_summary=None,
         guardrail_warnings=None,
@@ -212,11 +235,18 @@ async def query(
 @router.get("/history/{session_id}")
 async def get_history(
     session_id: str,
+    conversation_id: str | None = None,
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    """Return conversation history for a session (oldest first, max *limit*)."""
-    messages = await _svc.get_history(db, session_id, limit=limit)
+    """Return conversation history for a session.
+
+    If *conversation_id* is provided, returns messages for that conversation.
+    Otherwise returns messages from the most recent conversation.
+    """
+    messages = await _svc.get_history(
+        db, session_id, conversation_id=conversation_id, limit=limit
+    )
     return envelope([m.model_dump() for m in messages])
 
 
@@ -233,3 +263,32 @@ async def clear_history(
     """Delete all conversation messages for a session."""
     count = await _svc.clear_history(db, session_id)
     return envelope({"deleted": count})
+
+
+# ---------------------------------------------------------------------------
+# GET /conversations/{session_id}
+# ---------------------------------------------------------------------------
+
+
+@router.get("/conversations/{session_id}")
+async def list_conversations(
+    session_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """List all conversations for a session, newest first."""
+    conversations = await _svc.list_conversations(db, session_id)
+    return envelope([c.model_dump() for c in conversations])
+
+
+# ---------------------------------------------------------------------------
+# POST /conversations/{session_id}/new
+# ---------------------------------------------------------------------------
+
+
+@router.post("/conversations/{session_id}/new")
+async def start_new_conversation(
+    session_id: str,
+) -> dict[str, Any]:
+    """Start a new conversation for a session. Returns the new conversation ID."""
+    conv_id = await _svc.start_new_conversation(session_id)
+    return envelope({"conversation_id": conv_id})

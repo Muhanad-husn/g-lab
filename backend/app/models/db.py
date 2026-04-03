@@ -99,6 +99,7 @@ class ConversationMessage(Base):
 
     id: Mapped[str] = mapped_column(Text, primary_key=True)
     session_id: Mapped[str] = mapped_column(Text, nullable=False)
+    conversation_id: Mapped[str] = mapped_column(Text, nullable=False)
     role: Mapped[str] = mapped_column(Text, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     timestamp: Mapped[str] = mapped_column(Text, nullable=False)

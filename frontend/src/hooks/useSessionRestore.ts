@@ -17,6 +17,7 @@ export function useSessionRestore(): void {
   const setFindings = useStore((s) => s.setFindings);
   const setDbOverview = useStore((s) => s.setDbOverview);
   const loadHistory = useStore((s) => s.loadHistory);
+  const setActiveConversationId = useStore((s) => s.setActiveConversationId);
 
   useEffect(() => {
     let cancelled = false;
@@ -35,8 +36,12 @@ export function useSessionRestore(): void {
       }
 
       try {
+        // Load most recent conversation (no conversation_id = latest)
         const messages = await getHistory(session.id);
-        if (!cancelled) loadHistory(messages);
+        if (!cancelled) {
+          loadHistory(messages);
+          // loadHistory sets activeConversationId from messages[0].conversation_id
+        }
       } catch {
         // History fetch failure is non-critical.
       }
@@ -53,5 +58,5 @@ export function useSessionRestore(): void {
     return () => {
       cancelled = true;
     };
-  }, [setSession, setFindings, setDbOverview, loadHistory]);
+  }, [setSession, setFindings, setDbOverview, loadHistory, setActiveConversationId]);
 }

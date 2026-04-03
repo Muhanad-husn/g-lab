@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { createSession, deleteSession, exportSession, importSession, listSessions, resetSession, updateSession } from "@/api/sessions";
 import { listFindings } from "@/api/findings";
-import { getHistory } from "@/api/copilot";
+import { getHistory, startNewConversation } from "@/api/copilot";
 import {
   createPreset,
   deletePreset,
@@ -1245,6 +1245,7 @@ export function Toolbar() {
   const setFindings = useStore((s) => s.setFindings);
   const clearGraph = useStore((s) => s.clearGraph);
   const clearConversation = useStore((s) => s.clearConversation);
+  const setActiveConversationId = useStore((s) => s.setActiveConversationId);
   const addToast = useStore((s) => s.addToast);
   const advancedMode = useStore((s) => s.advancedMode);
   const nodeCount = useStore((s) => s.nodes.length);
@@ -1510,6 +1511,10 @@ export function Toolbar() {
                 clearConversation();
                 if (session) {
                   resetSession(session.id).catch(() => {});
+                  // Start a new conversation instead of deleting history
+                  startNewConversation(session.id)
+                    .then((newConvId) => setActiveConversationId(newConvId))
+                    .catch(() => setActiveConversationId(null));
                 }
                 setClearOpen(false);
               }}
