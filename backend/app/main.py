@@ -11,6 +11,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import Settings
+from app.core.credentials_store import load_saved_credentials
 from app.core.logging import configure_logging, get_logger
 from app.dependencies import get_settings, set_session_factory
 from app.models.db import Base, create_engine, create_session_factory
@@ -56,6 +57,13 @@ async def lifespan(app: FastAPI):  # type: ignore[no-untyped-def]
         await conn.run_sync(Base.metadata.create_all)
 
     logger.info("database_ready", path=str(db_path))
+
+    # --- Restore persisted credentials (overrides env defaults) ---
+    saved_creds = load_saved_credentials(data_dir)
+    if saved_creds:
+        for key, value in saved_creds.items():
+            setattr(settings, key, value)
+        logger.info("credentials_restored", keys=list(saved_creds.keys()))
 
     app.state.engine = engine
     app.state.db_session_factory = session_factory

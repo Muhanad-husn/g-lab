@@ -17,10 +17,16 @@ from typing import Any
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.credentials_store import save_credentials
 from app.core.logging import get_logger
 from app.dependencies import get_action_logger, get_db, get_openrouter, get_settings
 from app.models.enums import ActionType
-from app.models.schemas import CredentialsStatus, CredentialsUpdate, PresetCreate, PresetUpdate
+from app.models.schemas import (
+    CredentialsStatus,
+    CredentialsUpdate,
+    PresetCreate,
+    PresetUpdate,
+)
 from app.services.action_log import ActionLogger
 from app.services.copilot.openrouter import OpenRouterClient
 from app.services.neo4j_service import Neo4jService
@@ -251,6 +257,19 @@ async def update_credentials(
         else:
             request.app.state.openrouter_client = None
             openrouter_configured = False
+
+    # --- Persist to disk so credentials survive restarts ---
+    creds_to_save: dict[str, str] = {}
+    if body.neo4j_uri is not None:
+        creds_to_save["NEO4J_URI"] = body.neo4j_uri
+    if body.neo4j_user is not None:
+        creds_to_save["NEO4J_USER"] = body.neo4j_user
+    if body.neo4j_password is not None:
+        creds_to_save["NEO4J_PASSWORD"] = body.neo4j_password
+    if body.openrouter_api_key is not None:
+        creds_to_save["OPENROUTER_API_KEY"] = body.openrouter_api_key
+    if creds_to_save:
+        save_credentials(settings.GLAB_DATA_DIR, creds_to_save)
 
     status = CredentialsStatus(
         neo4j_uri=settings.NEO4J_URI,
