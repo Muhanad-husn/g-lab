@@ -242,7 +242,9 @@ Graph delta uses:
     {{"id": "<element_id>", "type": "REL_TYPE", "source": "<source_node_id>", "target": "<target_node_id>", "properties": {{...}}}}
 
   Copy node/edge objects exactly as they appear in the graph results.
-  Do NOT simplify, flatten, or omit any fields.
+  For path results, use the raw objects from the "elements" array — do NOT
+  reconstruct nodes from the "summary" string.
+  Do NOT simplify, flatten, or omit any properties.
 
 Confidence uses:
   event: confidence

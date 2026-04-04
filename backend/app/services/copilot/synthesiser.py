@@ -307,7 +307,11 @@ def _format_path(path: list[dict[str, Any]]) -> str:
 
 
 def _format_graph_results(rows: list[dict[str, Any]]) -> str:
-    """Serialise graph rows for inclusion in the prompt."""
+    """Serialise graph rows for inclusion in the prompt.
+
+    Paths get both a human-readable summary *and* the raw node/edge JSON
+    so the LLM can copy objects verbatim into ``graph_delta``.
+    """
     if not rows:
         return "(no graph results)"
     formatted_rows: list[dict[str, Any]] = []
@@ -315,7 +319,7 @@ def _format_graph_results(rows: list[dict[str, Any]]) -> str:
         formatted: dict[str, Any] = {}
         for k, v in row.items():
             if _is_path(v):
-                formatted[k] = _format_path(v)
+                formatted[k] = {"summary": _format_path(v), "elements": v}
             else:
                 formatted[k] = v
         formatted_rows.append(formatted)
