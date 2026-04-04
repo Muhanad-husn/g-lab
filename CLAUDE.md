@@ -138,6 +138,7 @@ See `docs/ARCHITECTURE.md` §11.3 for the full reference. Phase 1 requires only 
 | `docs/STRUCTURE_PH1.md` | Build order — what to implement in which stage (Phase 1)         |
 | `backend/CLAUDE.md`     | Backend conventions, Neo4j rules, SQLite rules, gotchas          |
 | `frontend/CLAUDE.md`    | Frontend conventions, Cytoscape sync rules, store patterns       |
+| `G-Lab_User_Manual.md`  | End-user manual — features, UI walkthrough, workflows            |
 
 ## Test Layers
 

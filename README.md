@@ -14,7 +14,7 @@ No cloud accounts. No telemetry. No credentials leaving your machine. Just you, 
 
 ---
 
-## Contenents
+## Contents
 
 - [Who It's For](#who-its-for)
 - [What Makes G-Lab Different](#what-makes-g-lab-different)
@@ -281,6 +281,7 @@ Session exports include a `vector_manifest.json` listing the library name and do
 | `docs/ARCHITECTURE.md`          | System design, data models, API surface           |
 | `docs/IMPLEMENTATION_PLAN.md`   | Granular build plan with per-run file lists       |
 | `docs/STRUCTURE_PH1.md`         | Phase 1 build order and stage breakdown           |
+| `G-Lab_User_Manual.md`          | End-user manual — features, UI walkthrough, workflows |
 
 ---
 
